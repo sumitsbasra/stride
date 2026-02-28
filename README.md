@@ -1,6 +1,6 @@
-# STRIDE 🏃‍♂️ 🗺️
+# stride 🏃‍♂️ 🗺️
 
-**STRIDE** is a web-based GPS art generator that allows runners and cyclists to "type a word, run the route, share on Strava." It converts text into continuous geographic coordinates, snaps them to real-world footpaths, and allows the user to export the resulting route as a GPX file.
+**stride** is a web-based GPS art generator that allows runners and cyclists to "type a word, run the route, share on Strava." It converts text into continuous geographic coordinates, snaps them to real-world footpaths, and allows the user to export the resulting route as a GPX file.
 
 ## Features
 
