@@ -1,815 +1,1201 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>STRIDE — GPS Art Generator</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>STRIDE — GPS Art Generator</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
 
-  :root {
-    --bg: #0C0C0C;
-    --surface: #141414;
-    --border: #1E1E1E;
-    --border-hover: #2A2A2A;
-    --text: #E8E4DF;
-    --text-dim: #777;
-    --text-muted: #444;
-    --accent: #FF4500;
-    --accent-hover: #e63e00;
-    --accent-glow: rgba(255,69,0,0.15);
-    --accent-bg: rgba(255,69,0,0.06);
-    --green: #22c55e;
-    --red: #ef4444;
-    --mono: 'DM Mono', monospace;
-    --sans: 'DM Sans', sans-serif;
-    --r: 10px;
-    --r-sm: 8px;
-  }
+    :root {
+      --bg: #0C0C0C;
+      --surface: #141414;
+      --border: #1E1E1E;
+      --border-hover: #2A2A2A;
+      --text: #E8E4DF;
+      --text-dim: #777;
+      --text-muted: #444;
+      --accent: #FF4500;
+      --accent-hover: #e63e00;
+      --accent-glow: rgba(255, 69, 0, 0.15);
+      --accent-bg: rgba(255, 69, 0, 0.06);
+      --green: #22c55e;
+      --red: #ef4444;
+      --mono: 'DM Mono', monospace;
+      --sans: 'DM Sans', sans-serif;
+      --r: 10px;
+      --r-sm: 8px;
+    }
 
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { background:var(--bg); color:var(--text); font-family:var(--sans); min-height:100vh; }
-  .container { max-width:1100px; margin:0 auto; padding:24px 20px; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-  /* Header */
-  header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
-  .logo { display:flex; align-items:center; gap:10px; }
-  .logo-dot { width:10px; height:10px; border-radius:50%; background:var(--accent); box-shadow:0 0 12px rgba(255,69,0,0.5); }
-  .logo-text { font-size:20px; font-weight:700; letter-spacing:4px; color:#fff; }
-  .logo-sub { font-size:10px; font-weight:500; letter-spacing:3px; color:var(--accent); }
-  .tagline { font-size:13px; color:var(--text-dim); }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+    }
 
-  /* Map */
-  .map-wrap { position:relative; }
-  #map { width:100%; height:480px; border-radius:var(--r); border:1px solid var(--border); }
-  .leaflet-control-attribution { font-size:9px !important; opacity:0.6; }
-  .leaflet-control-zoom a { background:var(--surface) !important; color:var(--text) !important; border-color:var(--border) !important; }
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 24px 20px;
+    }
 
-  /* Playback */
-  .playback {
-    position:absolute; bottom:12px; left:12px; right:12px; z-index:1000;
-    background:rgba(12,12,12,0.85); backdrop-filter:blur(12px);
-    border:1px solid var(--border); border-radius:8px;
-    padding:8px 12px; display:flex; align-items:center; gap:10px;
-  }
-  .pb-btn {
-    width:32px; height:32px; border-radius:50%; border:none;
-    background:var(--accent); color:#fff; cursor:pointer;
-    display:flex; align-items:center; justify-content:center;
-    flex-shrink:0; transition:background 0.15s;
-  }
-  .pb-btn:hover { background:var(--accent-hover); }
-  .pb-scrub {
-    flex:1; -webkit-appearance:none; appearance:none; height:3px;
-    background:var(--border); border-radius:2px; outline:none; cursor:pointer;
-  }
-  .pb-scrub::-webkit-slider-thumb {
-    -webkit-appearance:none; width:14px; height:14px; border-radius:50%;
-    background:#fff; cursor:pointer; border:none;
-    box-shadow:0 1px 4px rgba(0,0,0,0.4);
-  }
-  .pb-scrub::-moz-range-thumb {
-    width:14px; height:14px; border-radius:50%;
-    background:#fff; cursor:pointer; border:none;
-  }
-  .pb-time {
-    font-family:var(--mono); font-size:11px; color:var(--text-dim);
-    min-width:36px; text-align:right;
-  }
+    /* Header */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
 
-  /* Controls */
-  .controls { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:16px; }
-  .field { display:flex; flex-direction:column; gap:6px; }
-  .field.span { grid-column:1/-1; }
-  .label { font-size:9px; font-weight:600; letter-spacing:2.5px; color:var(--text-muted); text-transform:uppercase; }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
 
-  /* Shared control surface */
-  .ctrl {
-    background:var(--surface); border:1px solid var(--border); border-radius:var(--r-sm);
-    padding:0 14px; transition:border-color 0.2s; height:52px; display:flex; align-items:center;
-  }
-  .ctrl:hover { border-color:var(--border-hover); }
-  .ctrl:focus-within { border-color:var(--accent); }
+    .logo-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 12px rgba(255, 69, 0, 0.5);
+    }
 
-  /* Text input */
-  .text-input {
-    width:100%; background:transparent; border:none; outline:none;
-    font-size:22px; font-weight:600; letter-spacing:3px;
-    font-family:var(--mono); color:#fff; height:100%;
-  }
-  .text-input::placeholder { color:#333; }
+    .logo-text {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 4px;
+      color: #fff;
+    }
 
-  /* Location */
-  .loc-inner { display:flex; align-items:center; gap:10px; width:100%; }
-  .loc-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; transition:all 0.3s; }
-  .loc-input {
-    flex:1; background:transparent; border:none; outline:none;
-    font-size:13px; color:var(--text); font-family:var(--sans);
-    min-width:0;
-  }
-  .loc-input::placeholder { color:#333; }
-  .loc-refresh {
-    background:none; border:1px solid var(--border); border-radius:4px;
-    color:var(--text-muted); font-size:10px; padding:4px 10px; cursor:pointer;
-    font-family:var(--sans); transition:all 0.2s; letter-spacing:0.5px;
-  }
-  .loc-refresh:hover { border-color:var(--accent); color:var(--accent); }
+    .logo-sub {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 3px;
+      color: var(--accent);
+    }
 
-  /* Slider */
-  .slider-row { display:flex; align-items:center; gap:14px; width:100%; }
-  .slider {
-    flex:1; -webkit-appearance:none; appearance:none; height:3px;
-    background:var(--border); border-radius:2px; outline:none; cursor:pointer;
-  }
-  .slider::-webkit-slider-thumb {
-    -webkit-appearance:none; width:20px; height:20px; border-radius:50%;
-    background:var(--accent); cursor:pointer; border:3px solid var(--bg);
-    box-shadow:0 0 10px rgba(255,69,0,0.3);
-  }
-  .slider::-moz-range-thumb {
-    width:20px; height:20px; border-radius:50%; background:var(--accent);
-    cursor:pointer; border:3px solid var(--bg);
-  }
-  .slider-val { font-family:var(--mono); font-size:15px; font-weight:600; color:#fff; min-width:52px; text-align:right; }
-  .slider-hint { font-size:10px; color:var(--text-muted); margin-top:4px; }
+    .tagline {
+      font-size: 13px;
+      color: var(--text-dim);
+    }
 
-  /* Pace */
-  .pace-row { display:flex; align-items:center; gap:4px; }
-  .pace-input {
-    width:42px; background:transparent; border:1px solid var(--border); border-radius:4px;
-    padding:5px 4px; text-align:center; font-family:var(--mono); font-size:15px;
-    font-weight:600; color:#fff; outline:none; -moz-appearance:textfield;
-  }
-  .pace-input::-webkit-outer-spin-button,
-  .pace-input::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
-  .pace-input:focus { border-color:var(--accent); }
-  .pace-sep { font-family:var(--mono); font-size:15px; font-weight:600; color:#fff; }
-  .pace-unit { font-size:11px; color:var(--text-muted); margin-left:6px; }
-  .unit-toggle {
-    background:var(--border); border:none; border-radius:4px;
-    padding:3px 8px; font-family:var(--mono); font-size:12px; font-weight:600;
-    color:#fff; cursor:pointer; transition:background 0.15s; letter-spacing:0.5px;
-  }
-  .unit-toggle:hover { background:var(--accent); }
+    /* Map */
+    .map-wrap {
+      position: relative;
+    }
 
-  /* Status */
-  .status { font-size:11px; color:var(--accent); margin-top:4px; display:none; }
-  .status.show { display:block; animation:pulse 1.2s ease-in-out infinite; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    #map {
+      width: 100%;
+      height: 480px;
+      border-radius: var(--r);
+      border: 1px solid var(--border);
+    }
 
-  /* Stats */
-  .stats-row { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; grid-column:1/-1; }
-  .stat { text-align:center; flex-direction:column; justify-content:center; padding:0 10px; }
-  .stat-val { font-size:22px; font-weight:700; color:#fff; font-family:var(--mono); line-height:1; }
-  .stat-unit { font-size:11px; color:var(--text-dim); font-weight:400; }
-  .stat-lbl { font-size:9px; color:var(--text-muted); letter-spacing:1.5px; margin-top:4px; text-transform:uppercase; }
+    .leaflet-control-attribution {
+      font-size: 9px !important;
+      opacity: 0.6;
+    }
 
-  /* Export */
-  .actions { margin-top:14px; }
-  .btn-export {
-    width:100%; background:var(--accent); border:none; border-radius:var(--r);
-    padding:14px 20px; font-size:14px; font-weight:600; color:#fff;
-    cursor:pointer; font-family:var(--sans); letter-spacing:0.3px;
-    transition:all 0.15s; display:none;
-  }
-  .btn-export:hover { background:var(--accent-hover); transform:translateY(-1px); box-shadow:0 4px 20px rgba(255,69,0,0.2); }
-  .btn-export:active { transform:translateY(0); }
+    .leaflet-control-zoom a {
+      background: var(--surface) !important;
+      color: var(--text) !important;
+      border-color: var(--border) !important;
+    }
 
-  /* Footer */
-  footer { margin-top:20px; font-size:10px; color:#2A2A2A; border-top:1px solid var(--border); padding-top:14px; display:flex; justify-content:space-between; }
-</style>
+    /* Playback */
+    .playback {
+      position: absolute;
+      bottom: 12px;
+      left: 12px;
+      right: 12px;
+      z-index: 1000;
+      background: rgba(12, 12, 12, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .pb-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: none;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.15s;
+    }
+
+    .pb-btn:hover {
+      background: var(--accent-hover);
+    }
+
+    .pb-scrub {
+      flex: 1;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .pb-scrub::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #fff;
+      cursor: pointer;
+      border: none;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+    }
+
+    .pb-scrub::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #fff;
+      cursor: pointer;
+      border: none;
+    }
+
+    .pb-time {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-dim);
+      min-width: 36px;
+      text-align: right;
+    }
+
+    /* Controls */
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 16px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .field.span {
+      grid-column: 1/-1;
+    }
+
+    .label {
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 2.5px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    /* Shared control surface */
+    .ctrl {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      padding: 0 14px;
+      transition: border-color 0.2s;
+      height: 52px;
+      display: flex;
+      align-items: center;
+    }
+
+    .ctrl:hover {
+      border-color: var(--border-hover);
+    }
+
+    .ctrl:focus-within {
+      border-color: var(--accent);
+    }
+
+    /* Text input */
+    .text-input {
+      width: 100%;
+      background: transparent;
+      border: none;
+      outline: none;
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: 3px;
+      font-family: var(--mono);
+      color: #fff;
+      height: 100%;
+    }
+
+    .text-input::placeholder {
+      color: #333;
+    }
+
+    /* Location */
+    .loc-inner {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .loc-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      transition: all 0.3s;
+    }
+
+    .loc-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      font-size: 13px;
+      color: var(--text);
+      font-family: var(--sans);
+      min-width: 0;
+    }
+
+    .loc-input::placeholder {
+      color: #333;
+    }
+
+    .loc-refresh {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text-muted);
+      font-size: 10px;
+      padding: 4px 10px;
+      cursor: pointer;
+      font-family: var(--sans);
+      transition: all 0.2s;
+      letter-spacing: 0.5px;
+    }
+
+    .loc-refresh:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* Slider */
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      width: 100%;
+    }
+
+    .slider {
+      flex: 1;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      border: 3px solid var(--bg);
+      box-shadow: 0 0 10px rgba(255, 69, 0, 0.3);
+    }
+
+    .slider::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      border: 3px solid var(--bg);
+    }
+
+    .slider-val {
+      font-family: var(--mono);
+      font-size: 15px;
+      font-weight: 600;
+      color: #fff;
+      min-width: 52px;
+      text-align: right;
+    }
+
+    .slider-hint {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* Pace */
+    .pace-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .pace-input {
+      width: 42px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 5px 4px;
+      text-align: center;
+      font-family: var(--mono);
+      font-size: 15px;
+      font-weight: 600;
+      color: #fff;
+      outline: none;
+      -moz-appearance: textfield;
+    }
+
+    .pace-input::-webkit-outer-spin-button,
+    .pace-input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    .pace-input:focus {
+      border-color: var(--accent);
+    }
+
+    .pace-sep {
+      font-family: var(--mono);
+      font-size: 15px;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .pace-unit {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-left: 6px;
+    }
+
+    .unit-toggle {
+      background: var(--border);
+      border: none;
+      border-radius: 4px;
+      padding: 3px 8px;
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 600;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.15s;
+      letter-spacing: 0.5px;
+    }
+
+    .unit-toggle:hover {
+      background: var(--accent);
+    }
+
+    /* Status */
+    .status {
+      font-size: 11px;
+      color: var(--accent);
+      margin-top: 4px;
+      display: none;
+    }
+
+    .status.show {
+      display: block;
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: 0.4
+      }
+    }
+
+    /* Stats */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      grid-column: 1/-1;
+    }
+
+    .stat {
+      text-align: center;
+      flex-direction: column;
+      justify-content: center;
+      padding: 0 10px;
+    }
+
+    .stat-val {
+      font-size: 22px;
+      font-weight: 700;
+      color: #fff;
+      font-family: var(--mono);
+      line-height: 1;
+    }
+
+    .stat-unit {
+      font-size: 11px;
+      color: var(--text-dim);
+      font-weight: 400;
+    }
+
+    .stat-lbl {
+      font-size: 9px;
+      color: var(--text-muted);
+      letter-spacing: 1.5px;
+      margin-top: 4px;
+      text-transform: uppercase;
+    }
+
+    /* Export */
+    .actions {
+      margin-top: 14px;
+    }
+
+    .btn-export {
+      width: 100%;
+      background: var(--accent);
+      border: none;
+      border-radius: var(--r);
+      padding: 14px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #fff;
+      cursor: pointer;
+      font-family: var(--sans);
+      letter-spacing: 0.3px;
+      transition: all 0.15s;
+      display: none;
+    }
+
+    .btn-export:hover {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 20px rgba(255, 69, 0, 0.2);
+    }
+
+    .btn-export:active {
+      transform: translateY(0);
+    }
+
+    /* Footer */
+    footer {
+      margin-top: 20px;
+      font-size: 10px;
+      color: #2A2A2A;
+      border-top: 1px solid var(--border);
+      padding-top: 14px;
+      display: flex;
+      justify-content: space-between;
+    }
+  </style>
 </head>
+
 <body>
-<div class="container">
-  <header>
-    <div class="logo">
-      <svg width="144" height="27" viewBox="0 0 287 54" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M9.84601 50.0296C9.20726 52.4917 6.82549 54.0832 4.30842 53.7299C1.79136 53.3767 -0.0610845 51.1908 0.00154149 48.6479C0.0641521 46.1049 2.022 44.013 4.55327 43.7843C7.0847 43.5554 9.38531 45.2626 9.90202 47.7531C10.0583 48.5062 10.0392 49.2852 9.84601 50.0296Z" fill="#00DF59"/>
-        <path d="M247.624 21.3761C248.461 21.1628 249.339 21.1713 250.174 21.4008C251.823 21.8552 253.126 23.1255 253.619 24.7652C253.903 25.7039 253.905 26.7053 253.621 27.6442C253.13 29.279 251.836 30.5483 250.194 31.0081C249.353 31.2433 248.466 31.2535 247.621 31.0376C245.414 30.474 243.87 28.4846 243.871 26.2054C243.871 23.9263 245.417 21.938 247.624 21.3761Z" fill="#F00202"/>
-        <path d="M226.813 0.0461241C228.883 0.0419553 234.796 -0.216227 236.278 0.535382C236.864 2.05994 236.592 16.8162 236.592 19.1838L236.603 47.6604L247.692 47.636C247.581 46.4913 247.658 43.5132 247.658 42.2424C247.668 38.5076 247.656 34.772 247.621 31.0373C248.466 31.2532 249.354 31.2432 250.195 31.008C250.153 34.7367 250.139 38.4658 250.148 42.1946C250.146 43.6911 250.219 46.2201 250.113 47.6399L273.651 47.633C277.42 47.631 281.23 47.6249 285.003 47.6457C285.634 47.6493 286.214 48.2045 286.196 48.8342C286.165 49.9935 284.219 50.1206 283.383 50.1487C280.836 50.1576 278.298 50.0946 275.755 50.095L258.073 50.1145H168.051L156.26 50.1164C154.187 50.1163 151.444 50.1872 149.418 50.0491C147.612 48.9871 144.725 44.7223 143.248 42.8723L131.04 27.551C124.259 27.5539 116.94 27.6755 110.185 27.5315C110.208 30.4823 110.563 47.8742 110.023 49.5608C108.523 50.3368 98.7998 50.0567 96.6068 50.0559L75.5883 50.0442L9.84609 50.0295C10.0392 49.2852 10.059 48.5061 9.90273 47.7532C13.8407 47.5897 18.3652 47.6829 22.3383 47.675L44.517 47.636C44.3501 45.4115 44.4274 42.3215 44.4262 40.0295C44.4083 35.8634 44.4271 31.6965 44.4818 27.5305C35.9736 27.673 27.2249 27.4716 18.6957 27.553C16.2158 27.5768 6.02926 27.7287 4.35781 27.2629C3.30428 26.1384 4.05591 4.8924 3.8373 1.69359C3.78445 0.914561 4.44101 0.201565 5.31093 0.129132C7.69969 -0.068507 10.1249 0.0689364 12.5365 0.0666319L26.725 0.0539366L37.7885 0.05296C40.6123 0.0520336 43.6234 -0.00785374 46.4252 0.281476C46.6072 0.4299 46.6854 0.600242 46.7494 0.822491C47.2151 2.44304 47.2803 11.8778 46.5316 13.1897C46.2943 13.6056 46.0578 13.7083 45.6166 13.8235C45.29 13.741 45.0082 13.6431 44.7768 13.386C44.1304 12.6632 44.4514 4.02271 44.5141 2.53538C31.929 2.36755 18.9332 2.53216 6.3207 2.52073C6.31869 9.64555 6.14176 17.86 6.37441 24.9104L32.6469 24.9123C36.8051 24.9125 40.9721 24.8259 45.1264 24.927C46.0634 24.9313 46.7783 25.4777 46.8627 26.4426C47.0756 28.8801 46.9908 31.4787 46.9877 33.928L46.9848 47.6448H75.9662L75.9769 2.53734L65.4682 2.5471C63.5471 2.55405 61.6438 2.58291 59.724 2.50804C58.4959 2.46017 57.4874 1.47375 58.4291 0.428937C60.0986 -0.17231 63.1528 0.0539625 65.0053 0.0549131L74.9916 0.0578428C81.3841 0.0603133 87.8007 0.0490466 94.1947 0.0549131C94.597 0.0553762 95.3033 0.116381 95.6732 0.269757C96.1905 0.484575 96.2255 0.5927 96.4271 1.02269C96.4385 1.97691 96.0321 2.55893 95.0414 2.54905C93.3524 2.53192 91.6617 2.52865 89.9721 2.52757L78.5805 2.51976C78.784 17.3798 78.5944 32.7504 78.599 47.6496L107.539 47.6301L107.555 16.844C107.551 12.8327 107.326 4.4151 107.744 0.753155C109.516 -0.265473 113.326 0.0492957 115.455 0.0490538H125.209L136.905 0.0539366C139.366 0.0553091 143.785 -0.139957 146.002 0.444562C146.582 3.49752 146.201 9.90222 146.263 13.2326C146.308 15.693 146.54 25.6657 145.823 27.2073C144.781 27.8316 135.843 27.5424 134.121 27.5305C138.081 32.151 141.886 37.3456 145.765 42.053C147.175 43.7657 148.789 46.115 150.25 47.6487L171.063 47.6164C170.895 45.1093 170.956 42.1253 170.954 39.5901L170.953 26.969L170.971 10.8508C170.965 8.1239 170.91 5.39469 170.914 2.66917C170.914 2.00979 171.023 1.19041 171.407 0.651593C171.624 0.346454 171.692 0.369599 172.019 0.214093C172.258 0.235542 172.887 0.239415 173 0.418194C173.83 1.75489 173.491 4.75362 173.49 6.31663L173.488 16.301L173.496 47.6526L193.596 47.6614C193.593 43.0835 193.373 1.11671 193.919 0.291241C195.273 -0.0497067 199.541 0.0516498 201.144 0.0519834L213.187 0.0617491L226.813 0.0461241ZM196.061 47.6516C208.415 47.6321 221.642 47.4107 233.945 47.6623C233.934 32.747 233.756 17.4194 233.945 2.53343L196.065 2.52269L196.061 47.6516ZM110.176 2.5305C110.275 9.88004 110.025 17.6567 110.24 24.9075C121.346 24.9065 132.759 24.7632 143.839 24.9182C143.603 17.8265 143.766 9.6909 143.803 2.53636L110.176 2.5305Z" fill="#FF2A00"/>
-        <path d="M247.793 0.610291C248.474 0.328335 249.035 0.115249 249.778 0.100734C255.418 -0.00967005 261.15 0.0471517 266.791 0.0545635L279.148 0.0713957C280.936 0.0732487 283.084 -0.0681938 284.855 0.131769C285.819 0.24063 286.162 0.896108 285.994 1.84605C285.192 2.91612 283.254 2.52562 281.958 2.52407H275.291L250.103 2.53766C250.16 8.51386 249.929 15.5663 250.174 21.4008C249.339 21.1713 248.461 21.1628 247.624 21.376C247.671 16.9298 247.682 12.4832 247.656 8.03673C247.656 5.71175 247.588 2.8925 247.793 0.610291Z" fill="#FF2A00"/>
-        <path d="M253.619 24.7652C260.854 25.0256 268.266 24.6658 275.516 24.8072C276.786 24.8319 277.801 25.9034 276.979 27.1172C275.564 28.0713 260.427 27.3604 257.858 27.5791C257.307 27.6259 254.064 27.5216 253.621 27.6442C253.905 26.7053 253.903 25.7039 253.619 24.7652Z" fill="#FF2A00"/>
-      </svg>
-    </div>
-    <p class="tagline">Type a word, run the route, share on Strava.</p>
-  </header>
+  <div class="container">
+    <header>
+      <div class="logo">
+        <svg width="144" height="27" viewBox="0 0 287 54" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path
+            d="M9.84601 50.0296C9.20726 52.4917 6.82549 54.0832 4.30842 53.7299C1.79136 53.3767 -0.0610845 51.1908 0.00154149 48.6479C0.0641521 46.1049 2.022 44.013 4.55327 43.7843C7.0847 43.5554 9.38531 45.2626 9.90202 47.7531C10.0583 48.5062 10.0392 49.2852 9.84601 50.0296Z"
+            fill="#00DF59" />
+          <path
+            d="M247.624 21.3761C248.461 21.1628 249.339 21.1713 250.174 21.4008C251.823 21.8552 253.126 23.1255 253.619 24.7652C253.903 25.7039 253.905 26.7053 253.621 27.6442C253.13 29.279 251.836 30.5483 250.194 31.0081C249.353 31.2433 248.466 31.2535 247.621 31.0376C245.414 30.474 243.87 28.4846 243.871 26.2054C243.871 23.9263 245.417 21.938 247.624 21.3761Z"
+            fill="#F00202" />
+          <path
+            d="M226.813 0.0461241C228.883 0.0419553 234.796 -0.216227 236.278 0.535382C236.864 2.05994 236.592 16.8162 236.592 19.1838L236.603 47.6604L247.692 47.636C247.581 46.4913 247.658 43.5132 247.658 42.2424C247.668 38.5076 247.656 34.772 247.621 31.0373C248.466 31.2532 249.354 31.2432 250.195 31.008C250.153 34.7367 250.139 38.4658 250.148 42.1946C250.146 43.6911 250.219 46.2201 250.113 47.6399L273.651 47.633C277.42 47.631 281.23 47.6249 285.003 47.6457C285.634 47.6493 286.214 48.2045 286.196 48.8342C286.165 49.9935 284.219 50.1206 283.383 50.1487C280.836 50.1576 278.298 50.0946 275.755 50.095L258.073 50.1145H168.051L156.26 50.1164C154.187 50.1163 151.444 50.1872 149.418 50.0491C147.612 48.9871 144.725 44.7223 143.248 42.8723L131.04 27.551C124.259 27.5539 116.94 27.6755 110.185 27.5315C110.208 30.4823 110.563 47.8742 110.023 49.5608C108.523 50.3368 98.7998 50.0567 96.6068 50.0559L75.5883 50.0442L9.84609 50.0295C10.0392 49.2852 10.059 48.5061 9.90273 47.7532C13.8407 47.5897 18.3652 47.6829 22.3383 47.675L44.517 47.636C44.3501 45.4115 44.4274 42.3215 44.4262 40.0295C44.4083 35.8634 44.4271 31.6965 44.4818 27.5305C35.9736 27.673 27.2249 27.4716 18.6957 27.553C16.2158 27.5768 6.02926 27.7287 4.35781 27.2629C3.30428 26.1384 4.05591 4.8924 3.8373 1.69359C3.78445 0.914561 4.44101 0.201565 5.31093 0.129132C7.69969 -0.068507 10.1249 0.0689364 12.5365 0.0666319L26.725 0.0539366L37.7885 0.05296C40.6123 0.0520336 43.6234 -0.00785374 46.4252 0.281476C46.6072 0.4299 46.6854 0.600242 46.7494 0.822491C47.2151 2.44304 47.2803 11.8778 46.5316 13.1897C46.2943 13.6056 46.0578 13.7083 45.6166 13.8235C45.29 13.741 45.0082 13.6431 44.7768 13.386C44.1304 12.6632 44.4514 4.02271 44.5141 2.53538C31.929 2.36755 18.9332 2.53216 6.3207 2.52073C6.31869 9.64555 6.14176 17.86 6.37441 24.9104L32.6469 24.9123C36.8051 24.9125 40.9721 24.8259 45.1264 24.927C46.0634 24.9313 46.7783 25.4777 46.8627 26.4426C47.0756 28.8801 46.9908 31.4787 46.9877 33.928L46.9848 47.6448H75.9662L75.9769 2.53734L65.4682 2.5471C63.5471 2.55405 61.6438 2.58291 59.724 2.50804C58.4959 2.46017 57.4874 1.47375 58.4291 0.428937C60.0986 -0.17231 63.1528 0.0539625 65.0053 0.0549131L74.9916 0.0578428C81.3841 0.0603133 87.8007 0.0490466 94.1947 0.0549131C94.597 0.0553762 95.3033 0.116381 95.6732 0.269757C96.1905 0.484575 96.2255 0.5927 96.4271 1.02269C96.4385 1.97691 96.0321 2.55893 95.0414 2.54905C93.3524 2.53192 91.6617 2.52865 89.9721 2.52757L78.5805 2.51976C78.784 17.3798 78.5944 32.7504 78.599 47.6496L107.539 47.6301L107.555 16.844C107.551 12.8327 107.326 4.4151 107.744 0.753155C109.516 -0.265473 113.326 0.0492957 115.455 0.0490538H125.209L136.905 0.0539366C139.366 0.0553091 143.785 -0.139957 146.002 0.444562C146.582 3.49752 146.201 9.90222 146.263 13.2326C146.308 15.693 146.54 25.6657 145.823 27.2073C144.781 27.8316 135.843 27.5424 134.121 27.5305C138.081 32.151 141.886 37.3456 145.765 42.053C147.175 43.7657 148.789 46.115 150.25 47.6487L171.063 47.6164C170.895 45.1093 170.956 42.1253 170.954 39.5901L170.953 26.969L170.971 10.8508C170.965 8.1239 170.91 5.39469 170.914 2.66917C170.914 2.00979 171.023 1.19041 171.407 0.651593C171.624 0.346454 171.692 0.369599 172.019 0.214093C172.258 0.235542 172.887 0.239415 173 0.418194C173.83 1.75489 173.491 4.75362 173.49 6.31663L173.488 16.301L173.496 47.6526L193.596 47.6614C193.593 43.0835 193.373 1.11671 193.919 0.291241C195.273 -0.0497067 199.541 0.0516498 201.144 0.0519834L213.187 0.0617491L226.813 0.0461241ZM196.061 47.6516C208.415 47.6321 221.642 47.4107 233.945 47.6623C233.934 32.747 233.756 17.4194 233.945 2.53343L196.065 2.52269L196.061 47.6516ZM110.176 2.5305C110.275 9.88004 110.025 17.6567 110.24 24.9075C121.346 24.9065 132.759 24.7632 143.839 24.9182C143.603 17.8265 143.766 9.6909 143.803 2.53636L110.176 2.5305Z"
+            fill="#FF2A00" />
+          <path
+            d="M247.793 0.610291C248.474 0.328335 249.035 0.115249 249.778 0.100734C255.418 -0.00967005 261.15 0.0471517 266.791 0.0545635L279.148 0.0713957C280.936 0.0732487 283.084 -0.0681938 284.855 0.131769C285.819 0.24063 286.162 0.896108 285.994 1.84605C285.192 2.91612 283.254 2.52562 281.958 2.52407H275.291L250.103 2.53766C250.16 8.51386 249.929 15.5663 250.174 21.4008C249.339 21.1713 248.461 21.1628 247.624 21.376C247.671 16.9298 247.682 12.4832 247.656 8.03673C247.656 5.71175 247.588 2.8925 247.793 0.610291Z"
+            fill="#FF2A00" />
+          <path
+            d="M253.619 24.7652C260.854 25.0256 268.266 24.6658 275.516 24.8072C276.786 24.8319 277.801 25.9034 276.979 27.1172C275.564 28.0713 260.427 27.3604 257.858 27.5791C257.307 27.6259 254.064 27.5216 253.621 27.6442C253.905 26.7053 253.903 25.7039 253.619 24.7652Z"
+            fill="#FF2A00" />
+        </svg>
+      </div>
+      <p class="tagline">Type a word, run the route, share on Strava.</p>
+    </header>
 
-  <div class="map-wrap">
-    <div id="map"></div>
-    <div class="playback" id="playback" style="display:none">
-      <button class="pb-btn" id="pbBtn" onclick="togglePlayback()">
-        <svg id="pbIconPlay" width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><polygon points="2,0 14,7 2,14"/></svg>
-        <svg id="pbIconPause" width="14" height="14" viewBox="0 0 14 14" fill="currentColor" style="display:none"><rect x="1" y="0" width="4" height="14"/><rect x="9" y="0" width="4" height="14"/></svg>
-      </button>
-      <input class="pb-scrub" id="pbScrub" type="range" min="0" max="1000" value="0" step="1">
-      <span class="pb-time" id="pbTime">0:00</span>
-    </div>
-  </div>
-
-  <div class="controls">
-    <!-- Text -->
-    <div class="field">
-      <label class="label">YOUR TEXT</label>
-      <div class="ctrl">
-        <input class="text-input" id="textInput" type="text" value="RUN" maxlength="10" placeholder="RUN">
+    <div class="map-wrap">
+      <div id="map"></div>
+      <div class="playback" id="playback" style="display:none">
+        <button class="pb-btn" id="pbBtn" onclick="togglePlayback()">
+          <svg id="pbIconPlay" width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
+            <polygon points="2,0 14,7 2,14" />
+          </svg>
+          <svg id="pbIconPause" width="14" height="14" viewBox="0 0 14 14" fill="currentColor" style="display:none">
+            <rect x="1" y="0" width="4" height="14" />
+            <rect x="9" y="0" width="4" height="14" />
+          </svg>
+        </button>
+        <input class="pb-scrub" id="pbScrub" type="range" min="0" max="1000" value="0" step="1">
+        <span class="pb-time" id="pbTime">0:00</span>
       </div>
     </div>
 
-    <!-- Location -->
-    <div class="field">
-      <label class="label">START POINT <span style="color:#333;font-weight:400;letter-spacing:1px">— drag green pin on map</span></label>
-      <div class="ctrl">
-        <div class="loc-inner">
-          <div class="loc-dot" id="locDot" style="background:#444"></div>
-          <input class="loc-input" id="locInput" type="text" placeholder="Search location..." value="Locating…" onfocus="this.select()">
-          <button class="loc-refresh" onclick="requestLocation()" title="Use my location">📍</button>
+    <div class="controls">
+      <!-- Text -->
+      <div class="field">
+        <label class="label">YOUR TEXT</label>
+        <div class="ctrl">
+          <input class="text-input" id="textInput" type="text" value="RUN" maxlength="10" placeholder="RUN">
+        </div>
+      </div>
+
+      <!-- Location -->
+      <div class="field">
+        <label class="label">START POINT <span style="color:#333;font-weight:400;letter-spacing:1px">— drag green pin on
+            map</span></label>
+        <div class="ctrl">
+          <div class="loc-inner">
+            <div class="loc-dot" id="locDot" style="background:#444"></div>
+            <input class="loc-input" id="locInput" type="text" placeholder="Search location..." value="Locating…"
+              onfocus="this.select()">
+            <button class="loc-refresh" onclick="requestLocation()" title="Use my location">📍</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Distance -->
+      <div class="field">
+        <label class="label">TARGET DISTANCE</label>
+        <div class="ctrl">
+          <div class="slider-row">
+            <input class="slider" id="distSlider" type="range" min="2" max="30" step="0.5" value="5">
+            <span class="slider-val" id="distVal">5 km</span>
+          </div>
+        </div>
+        <div class="slider-hint">Letter size scales to hit your target run length</div>
+      </div>
+
+      <!-- Pace -->
+      <div class="field">
+        <label class="label">PACE</label>
+        <div class="ctrl">
+          <div class="pace-row">
+            <input class="pace-input" id="paceMin" type="number" min="3" max="15" value="6" step="1">
+            <span class="pace-sep">:</span>
+            <input class="pace-input" id="paceSec" type="number" min="0" max="59" value="00" step="5">
+            <span class="pace-unit">min /</span>
+            <button class="unit-toggle" id="unitToggle" onclick="toggleUnit()">km</button>
+          </div>
+        </div>
+        <div class="status" id="snappingStatus">⟳ Snapping to roads…</div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-row">
+        <div class="ctrl stat">
+          <div class="stat-val" id="statDist">—</div>
+          <div class="stat-lbl" id="statDistLabel">DISTANCE</div>
+        </div>
+        <div class="ctrl stat">
+          <div class="stat-val" id="statTime">—</div>
+          <div class="stat-lbl">EST. TIME</div>
+        </div>
+        <div class="ctrl stat">
+          <div class="stat-val" id="statPts">—</div>
+          <div class="stat-lbl">WAYPOINTS</div>
         </div>
       </div>
     </div>
 
-    <!-- Distance -->
-    <div class="field">
-      <label class="label">TARGET DISTANCE</label>
-      <div class="ctrl">
-        <div class="slider-row">
-          <input class="slider" id="distSlider" type="range" min="2" max="30" step="0.5" value="5">
-          <span class="slider-val" id="distVal">5 km</span>
-        </div>
-      </div>
-      <div class="slider-hint">Letter size scales to hit your target run length</div>
+    <div class="actions">
+      <button class="btn-export" id="exportBtn" onclick="downloadGPX()">↓ Download GPX</button>
     </div>
 
-    <!-- Pace -->
-    <div class="field">
-      <label class="label">PACE</label>
-      <div class="ctrl">
-        <div class="pace-row">
-          <input class="pace-input" id="paceMin" type="number" min="3" max="15" value="6" step="1">
-          <span class="pace-sep">:</span>
-          <input class="pace-input" id="paceSec" type="number" min="0" max="59" value="00" step="5">
-          <span class="pace-unit">min /</span>
-          <button class="unit-toggle" id="unitToggle" onclick="toggleUnit()">km</button>
-        </div>
-      </div>
-      <div class="status" id="snappingStatus">⟳ Snapping to roads…</div>
-    </div>
-
-    <!-- Stats -->
-    <div class="stats-row">
-      <div class="ctrl stat">
-        <div class="stat-val" id="statDist">—</div>
-        <div class="stat-lbl" id="statDistLabel">DISTANCE</div>
-      </div>
-      <div class="ctrl stat">
-        <div class="stat-val" id="statTime">—</div>
-        <div class="stat-lbl">EST. TIME</div>
-      </div>
-      <div class="ctrl stat">
-        <div class="stat-val" id="statPts">—</div>
-        <div class="stat-lbl">WAYPOINTS</div>
-      </div>
-    </div>
+    <footer>
+      <span>STRIDE GPS Art</span>
+      <span>Map © OpenStreetMap © CARTO</span>
+    </footer>
   </div>
 
-  <div class="actions">
-    <button class="btn-export" id="exportBtn" onclick="downloadGPX()">↓ Download GPX for Strava / Garmin / Apple Watch</button>
-  </div>
+  <script>
+    // ===== FONT =====
+    const F = (() => {
+      const c = {}; const h = (w, ...s) => ({ width: w, strokes: s }); const p = (x, y) => ({ x, y });
+      // All glyphs: single continuous path, minimal retracing, start at bottom-left baseline
+      // Grid: width varies, height 0(top) to 21(bottom)
 
-  <footer>
-    <span>STRIDE GPS Art</span>
-    <span>Map © OpenStreetMap © CARTO</span>
-  </footer>
-</div>
+      // A: up left, across top, down right, retrace right up to mid, mid bar left, retrace mid bar right, down right to bottom
+      c.A = h(18, [p(0, 21), p(0, 0), p(18, 0), p(18, 21), p(18, 11), p(0, 11), p(18, 11), p(18, 21)]);
+      // B: up left, across top, down to mid-right, left at mid, right at mid, down to bottom-right, across bottom
+      c.B = h(18, [p(0, 21), p(0, 0), p(18, 0), p(18, 11), p(0, 11), p(18, 11), p(18, 21), p(0, 21)]);
+      // C: start bottom-left, up left, across top right, retrace top left, down left, across bottom right
+      c.C = h(18, [p(0, 21), p(0, 0), p(18, 0), p(0, 0), p(0, 21), p(18, 21)]);
+      // D: up left, across top, down right, across bottom back
+      c.D = h(18, [p(0, 21), p(0, 0), p(18, 0), p(18, 21), p(0, 21)]);
+      // E: bottom-right → bottom-left → up left → top-right → retrace top to left → mid bar → retrace mid to left → down to bottom-left
+      c.E = h(16, [p(16, 21), p(0, 21), p(0, 0), p(16, 0), p(0, 0), p(0, 11), p(12, 11), p(0, 11), p(0, 21)]);
+      // F: up left, across top, retrace top to left, down to mid, mid bar right, retrace mid to left, down to bottom
+      c.F = h(16, [p(0, 21), p(0, 0), p(16, 0), p(0, 0), p(0, 11), p(12, 11), p(0, 11), p(0, 21)]);
+      // G: up left, across top, retrace top back, down left, across bottom, up right to mid, mid bar in, retrace mid bar out, down right to bottom
+      c.G = h(18, [p(0, 21), p(0, 0), p(18, 0), p(0, 0), p(0, 21), p(18, 21), p(18, 11), p(10, 11), p(18, 11), p(18, 21)]);
+      // H: up left side, across middle, down right side
+      c.H = h(18, [p(0, 21), p(0, 0), p(0, 11), p(18, 11), p(18, 0), p(18, 21)]);
+      // I: single vertical
+      c.I = h(8, [p(4, 21), p(4, 0)]);
+      // J: hook at bottom-left, across bottom, up right side
+      c.J = h(14, [p(0, 17), p(0, 21), p(14, 21), p(14, 0)]);
+      // K: up left, back down to mid, diagonal up-right, back to mid, diagonal down-right
+      c.K = h(18, [p(0, 21), p(0, 0), p(0, 11), p(18, 0), p(0, 11), p(18, 21)]);
+      // L: top-left down to bottom-left across to bottom-right
+      c.L = h(16, [p(0, 0), p(0, 21), p(16, 21)]);
+      // M: up left, diagonal down to center, diagonal up to right, down right
+      c.M = h(20, [p(0, 21), p(0, 0), p(10, 11), p(20, 0), p(20, 21)]);
+      // N: up left, diagonal to bottom-right, up right
+      c.N = h(18, [p(0, 21), p(0, 0), p(18, 21), p(18, 0)]);
+      // O: closed rectangle
+      c.O = h(18, [p(0, 21), p(0, 0), p(18, 0), p(18, 21), p(0, 21)]);
+      // P: up left, across top, down right to mid, mid bar left, retrace down left to bottom
+      c.P = h(18, [p(0, 21), p(0, 0), p(18, 0), p(18, 11), p(0, 11), p(0, 21)]);
+      // Q: rectangle + tail
+      c.Q = h(18, [p(0, 21), p(0, 0), p(18, 0), p(18, 21), p(0, 21), p(12, 17), p(20, 24)]);
+      // R: up left, across top, down to mid-right, back mid-left, right to mid, diagonal to bottom-right
+      c.R = h(18, [p(0, 21), p(0, 0), p(18, 0), p(18, 11), p(0, 11), p(9, 11), p(18, 21)]);
+      // S: bottom-left, across bottom right, up right to mid, across mid left, up left to top, across top right, retrace back: top left, down left to mid, mid right, down right to bottom
+      c.S = h(18, [p(0, 21), p(18, 21), p(18, 11), p(0, 11), p(0, 0), p(18, 0), p(0, 0), p(0, 11), p(18, 11), p(18, 21)]);
+      // T: up stem, left along top, right along top full, back down stem
+      c.T = h(16, [p(8, 21), p(8, 0), p(0, 0), p(16, 0), p(8, 0), p(8, 21)]);
+      // U: top-left, down, across bottom, up right
+      c.U = h(18, [p(0, 0), p(0, 21), p(18, 21), p(18, 0)]);
+      // V: top-left, down to bottom-center, up to top-right
+      c.V = h(18, [p(0, 0), p(9, 21), p(18, 0)]);
+      // W: boxy double-U — start bottom-left, up left, down left, across bottom to mid, up mid peak, down mid, across bottom right, up right, retrace down right to bottom
+      c.W = h(22, [p(0, 21), p(0, 0), p(0, 21), p(11, 21), p(11, 7), p(11, 21), p(22, 21), p(22, 0), p(22, 21)]);
+      // X: diagonal down-right, back through center, diagonal to top-right
+      c.X = h(18, [p(0, 0), p(18, 21), p(9, 11), p(0, 21), p(9, 11), p(18, 0)]);
+      // Y: up stem to center, diagonal to top-left, retrace to center, diagonal to top-right, retrace to center, back down stem
+      c.Y = h(18, [p(9, 21), p(9, 11), p(0, 0), p(9, 11), p(18, 0), p(9, 11), p(9, 21)]);
+      // Z: across top, diagonal to bottom-left, across bottom
+      c.Z = h(18, [p(0, 0), p(18, 0), p(0, 21), p(18, 21)]);
 
-<script>
-// ===== FONT =====
-const F=(()=>{const c={};const h=(w,...s)=>({width:w,strokes:s});const p=(x,y)=>({x,y});
-// All glyphs: single continuous path, minimal retracing, start at bottom-left baseline
-// Grid: width varies, height 0(top) to 21(bottom)
+      // Numbers — all start and end at baseline (y=21) to prevent connector artifacts
+      // 0: bottom-left, up, across top, down right, across bottom — closed box
+      c["0"] = h(18, [p(0, 21), p(0, 0), p(18, 0), p(18, 21), p(0, 21)]);
+      // 1: bottom of stem, up to top, serif left, retrace to top, down to bottom
+      c["1"] = h(10, [p(6, 21), p(6, 0), p(2, 4), p(6, 0), p(6, 21)]);
+      // 2: start bottom-left, up left to mid, across mid right, up right to top, across top left, retrace top right, down right to mid, retrace mid left, down left to bottom, across bottom right
+      c["2"] = h(18, [p(0, 21), p(0, 11), p(18, 11), p(18, 0), p(0, 0), p(18, 0), p(18, 11), p(0, 11), p(0, 21), p(18, 21)]);
+      // 3: start bottom-left, across bottom right, up right to mid, indent left, retrace right, up to top, across top left, retrace back down
+      c["3"] = h(18, [p(0, 21), p(18, 21), p(18, 11), p(4, 11), p(18, 11), p(18, 0), p(0, 0), p(18, 0), p(18, 21)]);
+      // 4: start bottom-right, up right to top, retrace down to mid, across mid left to top-left, retrace mid right, down to bottom
+      c["4"] = h(18, [p(18, 21), p(18, 0), p(18, 11), p(0, 11), p(0, 0), p(0, 11), p(18, 11), p(18, 21)]);
+      // 5: bottom-left, across bottom right, up right to mid, across mid left, up left to top, across top right, retrace: top left, down left to mid, mid right, down right to bottom
+      c["5"] = h(18, [p(0, 21), p(18, 21), p(18, 11), p(0, 11), p(0, 0), p(18, 0), p(0, 0), p(0, 11), p(18, 11), p(18, 21)]);
+      // 6: start bottom-left, up left to top, across top right, retrace back, down left, across bottom right, up right to mid, mid bar left, retrace down
+      c["6"] = h(18, [p(0, 21), p(0, 0), p(18, 0), p(0, 0), p(0, 21), p(18, 21), p(18, 11), p(0, 11), p(0, 21)]);
+      // 7: start bottom of diagonal, up to top-right, across top left, retrace back down diagonal
+      c["7"] = h(18, [p(6, 21), p(18, 0), p(0, 0), p(18, 0), p(6, 21)]);
+      // 8: start bottom-left, up left, across top, down right, across bottom back, retrace up to mid, mid bar right, down to bottom
+      c["8"] = h(18, [p(0, 21), p(0, 0), p(18, 0), p(18, 21), p(0, 21), p(0, 11), p(18, 11), p(18, 21)]);
+      // 9: start bottom-left, across bottom right, up right to top, across top left, down left to mid, across mid right, down to bottom
+      c["9"] = h(18, [p(0, 21), p(18, 21), p(18, 0), p(0, 0), p(0, 11), p(18, 11), p(18, 21)]);
 
-// A: up left, across top, down right, retrace right up to mid, mid bar left, retrace mid bar right, down right to bottom
-c.A=h(18,[p(0,21),p(0,0),p(18,0),p(18,21),p(18,11),p(0,11),p(18,11),p(18,21)]);
-// B: up left, across top, down to mid-right, left at mid, right at mid, down to bottom-right, across bottom
-c.B=h(18,[p(0,21),p(0,0),p(18,0),p(18,11),p(0,11),p(18,11),p(18,21),p(0,21)]);
-// C: start bottom-left, up left, across top right, retrace top left, down left, across bottom right
-c.C=h(18,[p(0,21),p(0,0),p(18,0),p(0,0),p(0,21),p(18,21)]);
-// D: up left, across top, down right, across bottom back
-c.D=h(18,[p(0,21),p(0,0),p(18,0),p(18,21),p(0,21)]);
-// E: bottom-right → bottom-left → up left → top-right → retrace top to left → mid bar → retrace mid to left → down to bottom-left
-c.E=h(16,[p(16,21),p(0,21),p(0,0),p(16,0),p(0,0),p(0,11),p(12,11),p(0,11),p(0,21)]);
-// F: up left, across top, retrace top to left, down to mid, mid bar right, retrace mid to left, down to bottom
-c.F=h(16,[p(0,21),p(0,0),p(16,0),p(0,0),p(0,11),p(12,11),p(0,11),p(0,21)]);
-// G: up left, across top, retrace top back, down left, across bottom, up right to mid, mid bar in, retrace mid bar out, down right to bottom
-c.G=h(18,[p(0,21),p(0,0),p(18,0),p(0,0),p(0,21),p(18,21),p(18,11),p(10,11),p(18,11),p(18,21)]);
-// H: up left side, across middle, down right side
-c.H=h(18,[p(0,21),p(0,0),p(0,11),p(18,11),p(18,0),p(18,21)]);
-// I: single vertical
-c.I=h(8,[p(4,21),p(4,0)]);
-// J: hook at bottom-left, across bottom, up right side
-c.J=h(14,[p(0,17),p(0,21),p(14,21),p(14,0)]);
-// K: up left, back down to mid, diagonal up-right, back to mid, diagonal down-right
-c.K=h(18,[p(0,21),p(0,0),p(0,11),p(18,0),p(0,11),p(18,21)]);
-// L: top-left down to bottom-left across to bottom-right
-c.L=h(16,[p(0,0),p(0,21),p(16,21)]);
-// M: up left, diagonal down to center, diagonal up to right, down right
-c.M=h(20,[p(0,21),p(0,0),p(10,11),p(20,0),p(20,21)]);
-// N: up left, diagonal to bottom-right, up right
-c.N=h(18,[p(0,21),p(0,0),p(18,21),p(18,0)]);
-// O: closed rectangle
-c.O=h(18,[p(0,21),p(0,0),p(18,0),p(18,21),p(0,21)]);
-// P: up left, across top, down right to mid, mid bar left, retrace down left to bottom
-c.P=h(18,[p(0,21),p(0,0),p(18,0),p(18,11),p(0,11),p(0,21)]);
-// Q: rectangle + tail
-c.Q=h(18,[p(0,21),p(0,0),p(18,0),p(18,21),p(0,21),p(12,17),p(20,24)]);
-// R: up left, across top, down to mid-right, back mid-left, right to mid, diagonal to bottom-right
-c.R=h(18,[p(0,21),p(0,0),p(18,0),p(18,11),p(0,11),p(9,11),p(18,21)]);
-// S: bottom-left, across bottom right, up right to mid, across mid left, up left to top, across top right, retrace back: top left, down left to mid, mid right, down right to bottom
-c.S=h(18,[p(0,21),p(18,21),p(18,11),p(0,11),p(0,0),p(18,0),p(0,0),p(0,11),p(18,11),p(18,21)]);
-// T: up stem, left along top, right along top full, back down stem
-c.T=h(16,[p(8,21),p(8,0),p(0,0),p(16,0),p(8,0),p(8,21)]);
-// U: top-left, down, across bottom, up right
-c.U=h(18,[p(0,0),p(0,21),p(18,21),p(18,0)]);
-// V: top-left, down to bottom-center, up to top-right
-c.V=h(18,[p(0,0),p(9,21),p(18,0)]);
-// W: boxy double-U — start bottom-left, up left, down left, across bottom to mid, up mid peak, down mid, across bottom right, up right, retrace down right to bottom
-c.W=h(22,[p(0,21),p(0,0),p(0,21),p(11,21),p(11,7),p(11,21),p(22,21),p(22,0),p(22,21)]);
-// X: diagonal down-right, back through center, diagonal to top-right
-c.X=h(18,[p(0,0),p(18,21),p(9,11),p(0,21),p(9,11),p(18,0)]);
-// Y: up stem to center, diagonal to top-left, retrace to center, diagonal to top-right, retrace to center, back down stem
-c.Y=h(18,[p(9,21),p(9,11),p(0,0),p(9,11),p(18,0),p(9,11),p(9,21)]);
-// Z: across top, diagonal to bottom-left, across bottom
-c.Z=h(18,[p(0,0),p(18,0),p(0,21),p(18,21)]);
+      c[" "] = h(10); c["!"] = h(6, [p(3, 0), p(3, 14), p(3, 19), p(3, 21)]); c["."] = h(6, [p(3, 19), p(3, 21)]); c["-"] = h(14, [p(2, 11), p(12, 11)]); c["/"] = h(14, [p(14, 0), p(0, 21)]);
+      return c;
+    })();
 
-// Numbers — all start and end at baseline (y=21) to prevent connector artifacts
-// 0: bottom-left, up, across top, down right, across bottom — closed box
-c["0"]=h(18,[p(0,21),p(0,0),p(18,0),p(18,21),p(0,21)]);
-// 1: bottom of stem, up to top, serif left, retrace to top, down to bottom
-c["1"]=h(10,[p(6,21),p(6,0),p(2,4),p(6,0),p(6,21)]);
-// 2: start bottom-left, up left to mid, across mid right, up right to top, across top left, retrace top right, down right to mid, retrace mid left, down left to bottom, across bottom right
-c["2"]=h(18,[p(0,21),p(0,11),p(18,11),p(18,0),p(0,0),p(18,0),p(18,11),p(0,11),p(0,21),p(18,21)]);
-// 3: start bottom-left, across bottom right, up right to mid, indent left, retrace right, up to top, across top left, retrace back down
-c["3"]=h(18,[p(0,21),p(18,21),p(18,11),p(4,11),p(18,11),p(18,0),p(0,0),p(18,0),p(18,21)]);
-// 4: start bottom-right, up right to top, retrace down to mid, across mid left to top-left, retrace mid right, down to bottom
-c["4"]=h(18,[p(18,21),p(18,0),p(18,11),p(0,11),p(0,0),p(0,11),p(18,11),p(18,21)]);
-// 5: bottom-left, across bottom right, up right to mid, across mid left, up left to top, across top right, retrace: top left, down left to mid, mid right, down right to bottom
-c["5"]=h(18,[p(0,21),p(18,21),p(18,11),p(0,11),p(0,0),p(18,0),p(0,0),p(0,11),p(18,11),p(18,21)]);
-// 6: start bottom-left, up left to top, across top right, retrace back, down left, across bottom right, up right to mid, mid bar left, retrace down
-c["6"]=h(18,[p(0,21),p(0,0),p(18,0),p(0,0),p(0,21),p(18,21),p(18,11),p(0,11),p(0,21)]);
-// 7: start bottom of diagonal, up to top-right, across top left, retrace back down diagonal
-c["7"]=h(18,[p(6,21),p(18,0),p(0,0),p(18,0),p(6,21)]);
-// 8: start bottom-left, up left, across top, down right, across bottom back, retrace up to mid, mid bar right, down to bottom
-c["8"]=h(18,[p(0,21),p(0,0),p(18,0),p(18,21),p(0,21),p(0,11),p(18,11),p(18,21)]);
-// 9: start bottom-left, across bottom right, up right to top, across top left, down left to mid, across mid right, down to bottom
-c["9"]=h(18,[p(0,21),p(18,21),p(18,0),p(0,0),p(0,11),p(18,11),p(18,21)]);
+    // ===== TEXT → PATH =====
+    function textToStrokes(t) {
+      const u = t.toUpperCase(); let x = 0; const ls = []; const SP = 6, BL = 21;
+      for (const ch of u) { const g = F[ch]; if (!g) { x += 12; continue; } const tr = []; for (const s of g.strokes) { if (!s || !s.length) continue; tr.push(s.map(pt => ({ x: pt.x + x, y: pt.y }))); } if (tr.length) ls.push({ char: ch, xOffset: x, width: g.width, strokes: tr }); x += g.width + SP; }
+      return { letters: ls, totalWidth: x - SP, totalHeight: 25, baseline: BL };
+    }
 
-c[" "]=h(10);c["!"]=h(6,[p(3,0),p(3,14),p(3,19),p(3,21)]);c["."]=h(6,[p(3,19),p(3,21)]);c["-"]=h(14,[p(2,11),p(12,11)]);c["/"]=h(14,[p(14,0),p(0,21)]);
-return c;})();
+    function connectLetterStrokes(ss) {
+      if (!ss.length) return []; if (ss.length === 1) return ss[0]; const rem = ss.map(s => ({ p: [...s] })); const r = [...rem.shift().p];
+      while (rem.length) {
+        const lp = r[r.length - 1]; let bi = 0, bd = 1e9, br = false; for (let i = 0; i < rem.length; i++) { const s = rem[i].p; const dS = Math.abs(s[0].x - lp.x) + Math.abs(s[0].y - lp.y); const dE = Math.abs(s[s.length - 1].x - lp.x) + Math.abs(s[s.length - 1].y - lp.y); if (dS < bd) { bd = dS; bi = i; br = false; } if (dE < bd) { bd = dE; bi = i; br = true; } }
+        const n = rem.splice(bi, 1)[0]; const pts = br ? [...n.p].reverse() : n.p; const tg = pts[0]; if (Math.abs(lp.y - tg.y) > 0.5) r.push({ x: lp.x, y: tg.y }); if (Math.abs(lp.x - tg.x) > 0.5) r.push({ x: tg.x, y: tg.y }); r.push(...pts);
+      } return r;
+    }
 
-// ===== TEXT → PATH =====
-function textToStrokes(t){const u=t.toUpperCase();let x=0;const ls=[];const SP=6,BL=21;
-for(const ch of u){const g=F[ch];if(!g){x+=12;continue;}const tr=[];for(const s of g.strokes){if(!s||!s.length)continue;tr.push(s.map(pt=>({x:pt.x+x,y:pt.y})));}if(tr.length)ls.push({char:ch,xOffset:x,width:g.width,strokes:tr});x+=g.width+SP;}
-return{letters:ls,totalWidth:x-SP,totalHeight:25,baseline:BL};}
+    function connectViaBaseline(td) {
+      const { letters: ls, baseline: bl } = td; if (!ls.length) return []; const r = [];
+      for (let i = 0; i < ls.length; i++) {
+        const l = ls[i]; const lp = connectLetterStrokes(l.strokes); if (!lp.length) continue; const fp = lp[0];
+        if (!r.length) {
+          const sx = l.xOffset; r.push({ x: sx, y: bl }); if (Math.abs(fp.x - sx) > 0.5) r.push({ x: fp.x, y: bl }); if (Math.abs(fp.y - bl) > 0.5) r.push(fp); r.push(...lp);
+        } else { const last = r[r.length - 1]; if (Math.abs(last.y - bl) > 0.5) r.push({ x: last.x, y: bl }); r.push({ x: fp.x, y: bl }); if (Math.abs(fp.y - bl) > 0.5) r.push(fp); r.push(...lp); }
+      } return r;
+    }
 
-function connectLetterStrokes(ss){if(!ss.length)return[];if(ss.length===1)return ss[0];const rem=ss.map(s=>({p:[...s]}));const r=[...rem.shift().p];
-while(rem.length){const lp=r[r.length-1];let bi=0,bd=1e9,br=false;for(let i=0;i<rem.length;i++){const s=rem[i].p;const dS=Math.abs(s[0].x-lp.x)+Math.abs(s[0].y-lp.y);const dE=Math.abs(s[s.length-1].x-lp.x)+Math.abs(s[s.length-1].y-lp.y);if(dS<bd){bd=dS;bi=i;br=false;}if(dE<bd){bd=dE;bi=i;br=true;}}
-const n=rem.splice(bi,1)[0];const pts=br?[...n.p].reverse():n.p;const tg=pts[0];if(Math.abs(lp.y-tg.y)>0.5)r.push({x:lp.x,y:tg.y});if(Math.abs(lp.x-tg.x)>0.5)r.push({x:tg.x,y:tg.y});r.push(...pts);}return r;}
+    function toGeo(path, ctr, sz) {
+      if (!path.length) return []; const xs = path.map(p => p.x), ys = path.map(p => p.y);
+      const mnX = Math.min(...xs), mxX = Math.max(...xs), mnY = Math.min(...ys), mxY = Math.max(...ys);
+      const rX = mxX - mnX || 1, rY = mxY - mnY || 1, asp = rX / rY; let dLn, dLa;
+      if (asp > 1) { dLn = sz; dLa = sz / asp } else { dLa = sz; dLn = sz * asp }
+      const lc = Math.cos(ctr.lat * Math.PI / 180);
+      return path.map(p => ({ lat: ctr.lat + ((mxY - p.y) / rY - 0.5) * dLa, lng: ctr.lng + ((p.x - mnX) / rX - 0.5) * dLn / lc }));
+    }
 
-function connectViaBaseline(td){const{letters:ls,baseline:bl}=td;if(!ls.length)return[];const r=[];
-for(let i=0;i<ls.length;i++){const l=ls[i];const lp=connectLetterStrokes(l.strokes);if(!lp.length)continue;const fp=lp[0];
-if(!r.length){const sx=l.xOffset;r.push({x:sx,y:bl});if(Math.abs(fp.x-sx)>0.5)r.push({x:fp.x,y:bl});if(Math.abs(fp.y-bl)>0.5)r.push(fp);r.push(...lp);
-}else{const last=r[r.length-1];if(Math.abs(last.y-bl)>0.5)r.push({x:last.x,y:bl});r.push({x:fp.x,y:bl});if(Math.abs(fp.y-bl)>0.5)r.push(fp);r.push(...lp);}}return r;}
+    // Like toGeo but anchors so the first point lands on startPt
+    function toGeoFromStart(path, startPt, sz) {
+      if (!path.length) return [];
+      // First compute centered on a dummy origin
+      const centered = toGeo(path, { lat: 0, lng: 0 }, sz);
+      if (!centered.length) return [];
+      // Offset so first point = startPt
+      const dLat = startPt.lat - centered[0].lat;
+      const dLng = startPt.lng - centered[0].lng;
+      return centered.map(c => ({ lat: c.lat + dLat, lng: c.lng + dLng }));
+    }
 
-function toGeo(path,ctr,sz){if(!path.length)return[];const xs=path.map(p=>p.x),ys=path.map(p=>p.y);
-const mnX=Math.min(...xs),mxX=Math.max(...xs),mnY=Math.min(...ys),mxY=Math.max(...ys);
-const rX=mxX-mnX||1,rY=mxY-mnY||1,asp=rX/rY;let dLn,dLa;
-if(asp>1){dLn=sz;dLa=sz/asp}else{dLa=sz;dLn=sz*asp}
-const lc=Math.cos(ctr.lat*Math.PI/180);
-return path.map(p=>({lat:ctr.lat+((mxY-p.y)/rY-0.5)*dLa,lng:ctr.lng+((p.x-mnX)/rX-0.5)*dLn/lc}));}
+    function interp(path, mg) {
+      if (path.length < 2) return path; const r = [path[0]];
+      for (let i = 1; i < path.length; i++) {
+        const pv = path[i - 1], cr = path[i], d = Math.hypot(cr.x - pv.x, cr.y - pv.y);
+        if (d > mg) { const st = Math.ceil(d / mg); for (let s = 1; s <= st; s++) { const t = s / st; r.push({ x: pv.x + (cr.x - pv.x) * t, y: pv.y + (cr.y - pv.y) * t }); } } else r.push(cr);
+      } return r;
+    }
 
-// Like toGeo but anchors so the first point lands on startPt
-function toGeoFromStart(path, startPt, sz) {
-  if (!path.length) return [];
-  // First compute centered on a dummy origin
-  const centered = toGeo(path, { lat: 0, lng: 0 }, sz);
-  if (!centered.length) return [];
-  // Offset so first point = startPt
-  const dLat = startPt.lat - centered[0].lat;
-  const dLng = startPt.lng - centered[0].lng;
-  return centered.map(c => ({ lat: c.lat + dLat, lng: c.lng + dLng }));
-}
+    // ===== OSRM =====
+    function decPoly(e) { const pts = []; let i = 0, la = 0, lo = 0; while (i < e.length) { let b, sh = 0, r = 0; do { b = e.charCodeAt(i++) - 63; r |= (b & 0x1f) << sh; sh += 5 } while (b >= 0x20); la += (r & 1) ? ~(r >> 1) : (r >> 1); sh = 0; r = 0; do { b = e.charCodeAt(i++) - 63; r |= (b & 0x1f) << sh; sh += 5 } while (b >= 0x20); lo += (r & 1) ? ~(r >> 1) : (r >> 1); pts.push({ lat: la / 1e5, lng: lo / 1e5 }); } return pts; }
 
-function interp(path,mg){if(path.length<2)return path;const r=[path[0]];
-for(let i=1;i<path.length;i++){const pv=path[i-1],cr=path[i],d=Math.hypot(cr.x-pv.x,cr.y-pv.y);
-if(d>mg){const st=Math.ceil(d/mg);for(let s=1;s<=st;s++){const t=s/st;r.push({x:pv.x+(cr.x-pv.x)*t,y:pv.y+(cr.y-pv.y)*t});}}else r.push(cr);}return r;}
+    async function snap(wps) {
+      if (wps.length < 2) return wps; const B = "https://routing.openstreetmap.de/routed-foot/route/v1/foot/", MX = 50, all = [];
+      for (let i = 0; i < wps.length - 1; i += MX - 1) {
+        const ch = wps.slice(i, Math.min(i + MX, wps.length)); if (ch.length < 2) break;
+        const cs = ch.map(c => `${c.lng.toFixed(6)},${c.lat.toFixed(6)}`).join(";");
+        try {
+          const res = await fetch(`${B}${cs}?overview=full&geometries=polyline`); const d = await res.json();
+          if (d.code === "Ok" && d.routes?.[0]) { const dec = decPoly(d.routes[0].geometry); all.length ? all.push(...dec.slice(1)) : all.push(...dec) } else { all.length ? all.push(...ch.slice(1)) : all.push(...ch) }
+        }
+        catch (e) { all.length ? all.push(...ch.slice(1)) : all.push(...ch) }
+      } return all.length ? all : wps;
+    }
 
-// ===== OSRM =====
-function decPoly(e){const pts=[];let i=0,la=0,lo=0;while(i<e.length){let b,sh=0,r=0;do{b=e.charCodeAt(i++)-63;r|=(b&0x1f)<<sh;sh+=5}while(b>=0x20);la+=(r&1)?~(r>>1):(r>>1);sh=0;r=0;do{b=e.charCodeAt(i++)-63;r|=(b&0x1f)<<sh;sh+=5}while(b>=0x20);lo+=(r&1)?~(r>>1):(r>>1);pts.push({lat:la/1e5,lng:lo/1e5});}return pts;}
+    function dist(geo) { if (geo.length < 2) return 0; let t = 0; for (let i = 1; i < geo.length; i++) { const R = 6371, dLa = (geo[i].lat - geo[i - 1].lat) * Math.PI / 180, dLo = (geo[i].lng - geo[i - 1].lng) * Math.PI / 180; const a = Math.sin(dLa / 2) ** 2 + Math.cos(geo[i - 1].lat * Math.PI / 180) * Math.cos(geo[i].lat * Math.PI / 180) * Math.sin(dLo / 2) ** 2; t += R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)); } return t; }
 
-async function snap(wps){if(wps.length<2)return wps;const B="https://routing.openstreetmap.de/routed-foot/route/v1/foot/",MX=50,all=[];
-for(let i=0;i<wps.length-1;i+=MX-1){const ch=wps.slice(i,Math.min(i+MX,wps.length));if(ch.length<2)break;
-const cs=ch.map(c=>`${c.lng.toFixed(6)},${c.lat.toFixed(6)}`).join(";");
-try{const res=await fetch(`${B}${cs}?overview=full&geometries=polyline`);const d=await res.json();
-if(d.code==="Ok"&&d.routes?.[0]){const dec=decPoly(d.routes[0].geometry);all.length?all.push(...dec.slice(1)):all.push(...dec)}else{all.length?all.push(...ch.slice(1)):all.push(...ch)}}
-catch(e){all.length?all.push(...ch.slice(1)):all.push(...ch)}}return all.length?all:wps;}
+    function mkGPX(coords, name) { return `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="STRIDE" xmlns="http://www.topografix.com/GPX/1/1">\n  <trk>\n    <name>${name}</name>\n    <trkseg>\n${coords.map(c => `      <trkpt lat="${c.lat.toFixed(7)}" lon="${c.lng.toFixed(7)}"><ele>0</ele></trkpt>`).join("\n")}\n    </trkseg>\n  </trk>\n</gpx>`; }
 
-function dist(geo){if(geo.length<2)return 0;let t=0;for(let i=1;i<geo.length;i++){const R=6371,dLa=(geo[i].lat-geo[i-1].lat)*Math.PI/180,dLo=(geo[i].lng-geo[i-1].lng)*Math.PI/180;const a=Math.sin(dLa/2)**2+Math.cos(geo[i-1].lat*Math.PI/180)*Math.cos(geo[i].lat*Math.PI/180)*Math.sin(dLo/2)**2;t+=R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}return t;}
+    // ===== SIZE FROM TARGET DISTANCE =====
+    function calcSize(targetKm, text) {
+      const td = textToStrokes(text);
+      if (!td.letters.length) return { sz: 0.01, td: null };
+      const conn = connectViaBaseline(td);
+      let pathLen = 0;
+      for (let i = 1; i < conn.length; i++) pathLen += Math.hypot(conn[i].x - conn[i - 1].x, conn[i].y - conn[i - 1].y);
+      if (!pathLen) return { sz: 0.01, td: null };
+      // Road snapping adds ~40-60% overhead on average, so we scale down the target
+      // to account for that (the actual snapped route will be longer than straight lines)
+      const snapOverhead = 1.5;
+      const effectiveTarget = targetKm / snapOverhead;
+      const tw = td.totalWidth || 1;
+      const sz = (effectiveTarget * tw) / (pathLen * 111);
+      return { sz: Math.max(0.003, Math.min(sz, 0.12)), td };
+    }
 
-function mkGPX(coords,name){return`<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="STRIDE" xmlns="http://www.topografix.com/GPX/1/1">\n  <trk>\n    <name>${name}</name>\n    <trkseg>\n${coords.map(c=>`      <trkpt lat="${c.lat.toFixed(7)}" lon="${c.lng.toFixed(7)}"><ele>0</ele></trkpt>`).join("\n")}\n    </trkseg>\n  </trk>\n</gpx>`;}
+    // ===== STATE =====
+    let map, routeLine, ghostLine, endM, centerPin;
+    let loc = { lat: 40.6782, lng: -73.9442 };
+    let curGeo = null;
+    let busy = false;
+    let target = 5; // always stored in km internally
+    let useMetric = true;
 
-// ===== SIZE FROM TARGET DISTANCE =====
-function calcSize(targetKm, text) {
-  const td = textToStrokes(text);
-  if (!td.letters.length) return { sz: 0.01, td: null };
-  const conn = connectViaBaseline(td);
-  let pathLen = 0;
-  for (let i = 1; i < conn.length; i++) pathLen += Math.hypot(conn[i].x - conn[i-1].x, conn[i].y - conn[i-1].y);
-  if (!pathLen) return { sz: 0.01, td: null };
-  // Road snapping adds ~40-60% overhead on average, so we scale down the target
-  // to account for that (the actual snapped route will be longer than straight lines)
-  const snapOverhead = 1.5;
-  const effectiveTarget = targetKm / snapOverhead;
-  const tw = td.totalWidth || 1;
-  const sz = (effectiveTarget * tw) / (pathLen * 111);
-  return { sz: Math.max(0.003, Math.min(sz, 0.12)), td };
-}
+    // ===== MAP =====
+    map = L.map('map', { zoomControl: true }).setView([loc.lat, loc.lng], 14);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OSM</a> © <a href="https://carto.com/">CARTO</a>',
+      subdomains: 'abcd', maxZoom: 19
+    }).addTo(map);
 
-// ===== STATE =====
-let map, routeLine, ghostLine, endM, centerPin;
-let loc = { lat: 40.6782, lng: -73.9442 };
-let curGeo = null;
-let busy = false;
-let target = 5; // always stored in km internally
-let useMetric = true;
-
-// ===== MAP =====
-map = L.map('map', { zoomControl: true }).setView([loc.lat, loc.lng], 14);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-  attribution: '© <a href="https://www.openstreetmap.org/copyright">OSM</a> © <a href="https://carto.com/">CARTO</a>',
-  subdomains: 'abcd', maxZoom: 19
-}).addTo(map);
-
-// Draggable start pin
-const pinIcon = L.divIcon({
-  html: `<div style="display:flex;flex-direction:column;align-items:center">
+    // Draggable start pin
+    const pinIcon = L.divIcon({
+      html: `<div style="display:flex;flex-direction:column;align-items:center">
     <div style="width:20px;height:20px;border-radius:50%;background:var(--green);border:3px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,0.5);cursor:grab"></div>
     <div style="width:2px;height:8px;background:#fff;opacity:0.4"></div>
   </div>`,
-  iconSize: [20, 30], iconAnchor: [10, 30], className: ''
-});
-centerPin = L.marker([loc.lat, loc.lng], { icon: pinIcon, draggable: true, zIndexOffset: 1000 }).addTo(map);
-centerPin.bindTooltip('Drag to move start point', { direction: 'top', offset: [0, -30], className: 'pin-tip' });
+      iconSize: [20, 30], iconAnchor: [10, 30], className: ''
+    });
+    centerPin = L.marker([loc.lat, loc.lng], { icon: pinIcon, draggable: true, zIndexOffset: 1000 }).addTo(map);
+    centerPin.bindTooltip('Drag to move start point', { direction: 'top', offset: [0, -30], className: 'pin-tip' });
 
-// Add tooltip style
-const tipStyle = document.createElement('style');
-tipStyle.textContent = `.pin-tip { background:rgba(20,20,20,0.9) !important; border:1px solid #333 !important; color:#ccc !important; font-size:11px !important; font-family:var(--sans) !important; padding:4px 10px !important; border-radius:6px !important; box-shadow:0 2px 12px rgba(0,0,0,0.4) !important; } .pin-tip::before { border-top-color:#333 !important; }`;
-document.head.appendChild(tipStyle);
+    // Add tooltip style
+    const tipStyle = document.createElement('style');
+    tipStyle.textContent = `.pin-tip { background:rgba(20,20,20,0.9) !important; border:1px solid #333 !important; color:#ccc !important; font-size:11px !important; font-family:var(--sans) !important; padding:4px 10px !important; border-radius:6px !important; box-shadow:0 2px 12px rgba(0,0,0,0.4) !important; } .pin-tip::before { border-top-color:#333 !important; }`;
+    document.head.appendChild(tipStyle);
 
-let dragDebounce;
-centerPin.on('drag', (e) => {
-  // Update location text in real time while dragging
-  const ll = e.target.getLatLng();
-  document.getElementById('locInput').value = `${ll.lat.toFixed(4)}°, ${ll.lng.toFixed(4)}°`;
-  document.getElementById('locDot').style.background = 'var(--accent)';
-});
-centerPin.on('dragend', (e) => {
-  const ll = e.target.getLatLng();
-  loc = { lat: ll.lat, lng: ll.lng };
-  document.getElementById('locDot').style.background = 'var(--accent)';
-  document.getElementById('locInput').value = `${ll.lat.toFixed(4)}°, ${ll.lng.toFixed(4)}°`;
-  // Reverse geocode the new position
-  reverseGeocode(ll.lat, ll.lng);
-  clearTimeout(dragDebounce);
-  dragDebounce = setTimeout(generate, 200);
-});
+    let dragDebounce;
+    centerPin.on('drag', (e) => {
+      // Update location text in real time while dragging
+      const ll = e.target.getLatLng();
+      document.getElementById('locInput').value = `${ll.lat.toFixed(4)}°, ${ll.lng.toFixed(4)}°`;
+      document.getElementById('locDot').style.background = 'var(--accent)';
+    });
+    centerPin.on('dragend', (e) => {
+      const ll = e.target.getLatLng();
+      loc = { lat: ll.lat, lng: ll.lng };
+      document.getElementById('locDot').style.background = 'var(--accent)';
+      document.getElementById('locInput').value = `${ll.lat.toFixed(4)}°, ${ll.lng.toFixed(4)}°`;
+      // Reverse geocode the new position
+      reverseGeocode(ll.lat, ll.lng);
+      clearTimeout(dragDebounce);
+      dragDebounce = setTimeout(generate, 200);
+    });
 
-async function reverseGeocode(lat, lng) {
-  try {
-    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=14`);
-    const d = await r.json();
-    if (d.address) {
-      const parts = [];
-      const a = d.address;
-      if (a.neighbourhood || a.suburb) parts.push(a.neighbourhood || a.suburb);
-      if (a.city || a.town || a.village) parts.push(a.city || a.town || a.village);
-      if (parts.length) document.getElementById('locInput').value = parts.join(', ');
+    async function reverseGeocode(lat, lng) {
+      try {
+        const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=14`);
+        const d = await r.json();
+        if (d.address) {
+          const parts = [];
+          const a = d.address;
+          if (a.neighbourhood || a.suburb) parts.push(a.neighbourhood || a.suburb);
+          if (a.city || a.town || a.village) parts.push(a.city || a.town || a.village);
+          if (parts.length) document.getElementById('locInput').value = parts.join(', ');
+        }
+      } catch (e) { }
     }
-  } catch(e) {}
-}
 
-// ===== LOCATION =====
-function requestLocation() {
-  const dot = document.getElementById('locDot');
-  const txt = document.getElementById('locInput');
-  dot.style.background = '#666';
-  txt.value = 'Locating…';
+    // ===== LOCATION =====
+    function requestLocation() {
+      const dot = document.getElementById('locDot');
+      const txt = document.getElementById('locInput');
+      dot.style.background = '#666';
+      txt.value = 'Locating…';
 
-  if (!navigator.geolocation) {
-    dot.style.background = 'var(--red)';
-    txt.value = 'Not supported';
-    return;
-  }
+      if (!navigator.geolocation) {
+        dot.style.background = 'var(--red)';
+        txt.value = 'Not supported';
+        return;
+      }
 
-  navigator.geolocation.getCurrentPosition(
-    async (pos) => {
-      loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-      centerPin.setLatLng([loc.lat, loc.lng]);
-      map.setView([loc.lat, loc.lng], 14);
-      dot.style.background = 'var(--green)';
-      txt.value = `${pos.coords.latitude.toFixed(4)}°, ${pos.coords.longitude.toFixed(4)}°`;
-      reverseGeocode(loc.lat, loc.lng);
-      generate();
-    },
-    (err) => {
-      dot.style.background = 'var(--accent)';
-      txt.value = 'Brooklyn, NY (default)';
-      generate();
-    },
-    { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
-  );
-}
-
-requestLocation();
-
-// ===== GENERATE =====
-async function generate() {
-  if (busy) return;
-  const text = document.getElementById('textInput').value.trim();
-  if (!text) return;
-  busy = true;
-
-  const { sz, td } = calcSize(target, text);
-  if (!td || !td.letters.length) { busy = false; return; }
-
-  const conn = connectViaBaseline(td);
-  const fine = interp(conn, 1.5);
-  const geoC = toGeoFromStart(conn, loc, sz);
-  const geoF = toGeoFromStart(fine, loc, sz);
-
-  // Clear
-  [routeLine, ghostLine, endM].forEach(l => { if (l) map.removeLayer(l); });
-  routeLine = ghostLine = endM = null;
-  // Pin stays where user placed it — route anchors to it
-
-  const ll = geoF.map(c => [c.lat, c.lng]);
-  ghostLine = L.polyline(ll, { color: '#FF4500', weight: 2, opacity: 0.12, dashArray: '6 4' }).addTo(map);
-  map.fitBounds(L.latLngBounds(ll), { padding: [50, 50] });
-  document.getElementById('snappingStatus').classList.add('show');
-
-  try {
-    const snapped = await snap(geoC);
-    curGeo = snapped;
-    if (ghostLine) map.removeLayer(ghostLine);
-    routeLine = L.polyline(snapped.map(c => [c.lat, c.lng]), { color: '#FF4500', weight: 3.5, opacity: 0.9, lineCap: 'round', lineJoin: 'round' }).addTo(map);
-    map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
-    addMarkers(snapped);
-    updateStats(snapped);
-  } catch(e) {
-    curGeo = geoF;
-    if (ghostLine) { ghostLine.setStyle({ weight: 3, opacity: 0.9, dashArray: null }); routeLine = ghostLine; ghostLine = null; }
-    addMarkers(geoF);
-    updateStats(geoF);
-  }
-  document.getElementById('snappingStatus').classList.remove('show');
-
-  document.getElementById('exportBtn').style.display = 'block';
-  clearPlayback();
-  showPlayback();
-  busy = false;
-}
-
-function addMarkers(geo) {
-  const ei = L.divIcon({ html: '<div style="width:12px;height:12px;border-radius:50%;background:var(--red);border:2px solid #fff;box-shadow:0 1px 6px rgba(0,0,0,0.4)"></div>', iconSize: [12, 12], iconAnchor: [6, 6], className: '' });
-  endM = L.marker([geo[geo.length - 1].lat, geo[geo.length - 1].lng], { icon: ei }).addTo(map);
-}
-
-function getPaceMinPerKm() {
-  const m = parseInt(document.getElementById('paceMin').value) || 6;
-  const s = parseInt(document.getElementById('paceSec').value) || 0;
-  const pacePerUnit = m + s / 60;
-  // If pace is entered in min/mi, convert to min/km for internal calc
-  return useMetric ? pacePerUnit : pacePerUnit / 1.60934;
-}
-
-function updateStats(geo) {
-  const km = dist(geo);
-  const mi = km * 0.621371;
-  if (useMetric) {
-    document.getElementById('statDist').innerHTML = `${km.toFixed(1)} <span class="stat-unit">km</span>`;
-    document.getElementById('statDistLabel').textContent = `${mi.toFixed(1)} MI`;
-  } else {
-    document.getElementById('statDist').innerHTML = `${mi.toFixed(1)} <span class="stat-unit">mi</span>`;
-    document.getElementById('statDistLabel').textContent = `${km.toFixed(1)} KM`;
-  }
-  const pace = getPaceMinPerKm();
-  const mins = Math.round(km * pace);
-  const h = Math.floor(mins / 60), m = mins % 60;
-  document.getElementById('statTime').textContent = h ? `${h}h ${m}m` : `${m}m`;
-  document.getElementById('statPts').textContent = geo.length;
-}
-
-function toggleUnit() {
-  useMetric = !useMetric;
-  const btn = document.getElementById('unitToggle');
-  btn.textContent = useMetric ? 'km' : 'mi';
-  // Update distance slider display
-  updateDistSliderDisplay();
-  // Recalc stats
-  if (curGeo) updateStats(curGeo);
-}
-
-function updateDistSliderDisplay() {
-  const sl = document.getElementById('distSlider');
-  const dv = document.getElementById('distVal');
-  const kmVal = parseFloat(sl.value);
-  if (useMetric) {
-    dv.textContent = (kmVal % 1 === 0 ? kmVal : kmVal.toFixed(1)) + ' km';
-  } else {
-    const miVal = kmVal * 0.621371;
-    dv.textContent = miVal.toFixed(1) + ' mi';
-  }
-}
-
-// ===== UI =====
-let dbt;
-document.getElementById('textInput').addEventListener('input', () => { clearTimeout(dbt); dbt = setTimeout(generate, 400); });
-
-// Pace inputs — recalc time on change (no re-route needed)
-document.getElementById('paceMin').addEventListener('input', () => { if (curGeo) updateStats(curGeo); });
-document.getElementById('paceSec').addEventListener('input', () => { if (curGeo) updateStats(curGeo); });
-
-// Location search — geocode on Enter
-document.getElementById('locInput').addEventListener('keydown', async (e) => {
-  if (e.key !== 'Enter') return;
-  const query = e.target.value.trim();
-  if (!query) return;
-  const dot = document.getElementById('locDot');
-  dot.style.background = '#666';
-  try {
-    const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`);
-    const data = await res.json();
-    if (data.length > 0) {
-      loc = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-      centerPin.setLatLng([loc.lat, loc.lng]);
-      map.setView([loc.lat, loc.lng], 14);
-      dot.style.background = 'var(--green)';
-      e.target.value = data[0].display_name.split(',').slice(0, 2).join(',');
-      generate();
-    } else {
-      dot.style.background = 'var(--red)';
-      e.target.value = 'Not found — try again';
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          centerPin.setLatLng([loc.lat, loc.lng]);
+          map.setView([loc.lat, loc.lng], 14);
+          dot.style.background = 'var(--green)';
+          txt.value = `${pos.coords.latitude.toFixed(4)}°, ${pos.coords.longitude.toFixed(4)}°`;
+          reverseGeocode(loc.lat, loc.lng);
+          generate();
+        },
+        (err) => {
+          dot.style.background = 'var(--accent)';
+          txt.value = 'Brooklyn, NY (default)';
+          generate();
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
+      );
     }
-  } catch(err) {
-    dot.style.background = 'var(--red)';
-    e.target.value = 'Search failed';
-  }
-});
 
-const sl = document.getElementById('distSlider');
-const dv = document.getElementById('distVal');
-sl.addEventListener('input', () => {
-  target = parseFloat(sl.value);
-  updateDistSliderDisplay();
-});
-sl.addEventListener('change', () => { target = parseFloat(sl.value); generate(); });
+    requestLocation();
 
-function downloadGPX() {
-  if (!curGeo) return;
-  const text = document.getElementById('textInput').value.trim();
-  const gpx = mkGPX(curGeo, `STRIDE: ${text}`);
-  const blob = new Blob([gpx], { type: 'application/gpx+xml' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `stride-${text.toLowerCase().replace(/[^a-z0-9]/g, '-')}.gpx`;
-  a.click();
-}
+    // ===== GENERATE =====
+    async function generate() {
+      if (busy) return;
+      const text = document.getElementById('textInput').value.trim();
+      if (!text) return;
+      busy = true;
 
-// ===== PLAYBACK =====
-let pbAnim = null;
-let pbPlaying = false;
-let pbMarker = null;
-let pbProgress = 0;
-let pbTrail = null;
+      const { sz, td } = calcSize(target, text);
+      if (!td || !td.letters.length) { busy = false; return; }
 
-const pbRunnerIcon = L.divIcon({
-  html: '<div style="width:14px;height:14px;border-radius:50%;background:#fff;border:3px solid var(--accent);box-shadow:0 0 10px rgba(255,69,0,0.6)"></div>',
-  iconSize: [14, 14], iconAnchor: [7, 7], className: ''
-});
+      const conn = connectViaBaseline(td);
+      const fine = interp(conn, 1.5);
+      const geoC = toGeoFromStart(conn, loc, sz);
+      const geoF = toGeoFromStart(fine, loc, sz);
 
-function showPlayback() {
-  const pb = document.getElementById('playback');
-  pb.style.display = curGeo && curGeo.length > 1 ? 'flex' : 'none';
-}
+      // Clear
+      [routeLine, ghostLine, endM].forEach(l => { if (l) map.removeLayer(l); });
+      routeLine = ghostLine = endM = null;
+      // Pin stays where user placed it — route anchors to it
 
-// Compute cumulative distances for even-speed interpolation
-function getCumDist(geo) {
-  const d = [0];
-  for (let i = 1; i < geo.length; i++) {
-    const dlat = (geo[i].lat - geo[i-1].lat) * 111000;
-    const dlng = (geo[i].lng - geo[i-1].lng) * 111000 * Math.cos(geo[i].lat * Math.PI / 180);
-    d.push(d[i-1] + Math.hypot(dlat, dlng));
-  }
-  return d;
-}
+      const ll = geoF.map(c => [c.lat, c.lng]);
+      ghostLine = L.polyline(ll, { color: '#FF4500', weight: 2, opacity: 0.12, dashArray: '6 4' }).addTo(map);
+      map.fitBounds(L.latLngBounds(ll), { padding: [50, 50] });
+      document.getElementById('snappingStatus').classList.add('show');
 
-function getPointAtFraction(geo, cumDist, frac) {
-  const totalD = cumDist[cumDist.length - 1];
-  const targetD = frac * totalD;
-  for (let i = 1; i < cumDist.length; i++) {
-    if (cumDist[i] >= targetD) {
-      const segLen = cumDist[i] - cumDist[i-1];
-      const t = segLen > 0 ? (targetD - cumDist[i-1]) / segLen : 0;
-      return {
-        lat: geo[i-1].lat + (geo[i].lat - geo[i-1].lat) * t,
-        lng: geo[i-1].lng + (geo[i].lng - geo[i-1].lng) * t,
-        idx: i
-      };
+      try {
+        const snapped = await snap(geoC);
+        curGeo = snapped;
+        if (ghostLine) map.removeLayer(ghostLine);
+        routeLine = L.polyline(snapped.map(c => [c.lat, c.lng]), { color: '#FF4500', weight: 3.5, opacity: 0.9, lineCap: 'round', lineJoin: 'round' }).addTo(map);
+        map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
+        addMarkers(snapped);
+        updateStats(snapped);
+      } catch (e) {
+        curGeo = geoF;
+        if (ghostLine) { ghostLine.setStyle({ weight: 3, opacity: 0.9, dashArray: null }); routeLine = ghostLine; ghostLine = null; }
+        addMarkers(geoF);
+        updateStats(geoF);
+      }
+      document.getElementById('snappingStatus').classList.remove('show');
+
+      document.getElementById('exportBtn').style.display = 'block';
+      clearPlayback();
+      showPlayback();
+      busy = false;
     }
-  }
-  return { lat: geo[geo.length-1].lat, lng: geo[geo.length-1].lng, idx: geo.length-1 };
-}
 
-function updatePlaybackPos(frac) {
-  if (!curGeo || curGeo.length < 2) return;
-  const cumDist = getCumDist(curGeo);
-  const pt = getPointAtFraction(curGeo, cumDist, frac);
+    function addMarkers(geo) {
+      const ei = L.divIcon({ html: '<div style="width:12px;height:12px;border-radius:50%;background:var(--red);border:2px solid #fff;box-shadow:0 1px 6px rgba(0,0,0,0.4)"></div>', iconSize: [12, 12], iconAnchor: [6, 6], className: '' });
+      endM = L.marker([geo[geo.length - 1].lat, geo[geo.length - 1].lng], { icon: ei }).addTo(map);
+    }
 
-  if (!pbMarker) {
-    pbMarker = L.marker([pt.lat, pt.lng], { icon: pbRunnerIcon, zIndexOffset: 2000 }).addTo(map);
-  } else {
-    pbMarker.setLatLng([pt.lat, pt.lng]);
-  }
+    function getPaceMinPerKm() {
+      const m = parseInt(document.getElementById('paceMin').value) || 6;
+      const s = parseInt(document.getElementById('paceSec').value) || 0;
+      const pacePerUnit = m + s / 60;
+      // If pace is entered in min/mi, convert to min/km for internal calc
+      return useMetric ? pacePerUnit : pacePerUnit / 1.60934;
+    }
 
-  // Trail line up to current point
-  const trailPts = [];
-  for (let i = 0; i < pt.idx; i++) trailPts.push([curGeo[i].lat, curGeo[i].lng]);
-  trailPts.push([pt.lat, pt.lng]);
-  if (!pbTrail) {
-    pbTrail = L.polyline(trailPts, { color: '#fff', weight: 3, opacity: 0.5 }).addTo(map);
-  } else {
-    pbTrail.setLatLngs(trailPts);
-  }
+    function updateStats(geo) {
+      const km = dist(geo);
+      const mi = km * 0.621371;
+      if (useMetric) {
+        document.getElementById('statDist').innerHTML = `${km.toFixed(1)} <span class="stat-unit">km</span>`;
+        document.getElementById('statDistLabel').textContent = `${mi.toFixed(1)} MI`;
+      } else {
+        document.getElementById('statDist').innerHTML = `${mi.toFixed(1)} <span class="stat-unit">mi</span>`;
+        document.getElementById('statDistLabel').textContent = `${km.toFixed(1)} KM`;
+      }
+      const pace = getPaceMinPerKm();
+      const mins = Math.round(km * pace);
+      const h = Math.floor(mins / 60), m = mins % 60;
+      document.getElementById('statTime').textContent = h ? `${h}h ${m}m` : `${m}m`;
+      document.getElementById('statPts').textContent = geo.length;
+    }
 
-  // Update time display
-  const pace = getPaceMinPerKm();
-  const totalKm = cumDist[cumDist.length-1] / 1000;
-  const elapsedMin = frac * totalKm * pace;
-  const mm = Math.floor(elapsedMin);
-  const ss = Math.floor((elapsedMin - mm) * 60);
-  document.getElementById('pbTime').textContent = `${mm}:${ss.toString().padStart(2,'0')}`;
-}
+    function toggleUnit() {
+      useMetric = !useMetric;
+      const btn = document.getElementById('unitToggle');
+      btn.textContent = useMetric ? 'km' : 'mi';
+      // Update distance slider display
+      updateDistSliderDisplay();
+      // Recalc stats
+      if (curGeo) updateStats(curGeo);
+    }
 
-function animatePlayback(timestamp) {
-  if (!pbPlaying) return;
-  pbProgress += 0.0015; // ~11 seconds for full route at 60fps
-  if (pbProgress >= 1) {
-    pbProgress = 1;
-    stopPlayback();
-  }
-  document.getElementById('pbScrub').value = Math.round(pbProgress * 1000);
-  updatePlaybackPos(pbProgress);
-  if (pbPlaying) pbAnim = requestAnimationFrame(animatePlayback);
-}
+    function updateDistSliderDisplay() {
+      const sl = document.getElementById('distSlider');
+      const dv = document.getElementById('distVal');
+      const kmVal = parseFloat(sl.value);
+      if (useMetric) {
+        dv.textContent = (kmVal % 1 === 0 ? kmVal : kmVal.toFixed(1)) + ' km';
+      } else {
+        const miVal = kmVal * 0.621371;
+        dv.textContent = miVal.toFixed(1) + ' mi';
+      }
+    }
 
-function startPlayback() {
-  if (!curGeo || curGeo.length < 2) return;
-  if (pbProgress >= 1) pbProgress = 0;
-  pbPlaying = true;
-  document.getElementById('pbIconPlay').style.display = 'none';
-  document.getElementById('pbIconPause').style.display = 'block';
-  pbAnim = requestAnimationFrame(animatePlayback);
-}
+    // ===== UI =====
+    let dbt;
+    document.getElementById('textInput').addEventListener('input', () => { clearTimeout(dbt); dbt = setTimeout(generate, 400); });
 
-function stopPlayback() {
-  pbPlaying = false;
-  if (pbAnim) cancelAnimationFrame(pbAnim);
-  pbAnim = null;
-  document.getElementById('pbIconPlay').style.display = 'block';
-  document.getElementById('pbIconPause').style.display = 'none';
-}
+    // Pace inputs — recalc time on change (no re-route needed)
+    document.getElementById('paceMin').addEventListener('input', () => { if (curGeo) updateStats(curGeo); });
+    document.getElementById('paceSec').addEventListener('input', () => { if (curGeo) updateStats(curGeo); });
 
-function togglePlayback() {
-  if (pbPlaying) stopPlayback(); else startPlayback();
-}
+    // Location search — geocode on Enter
+    document.getElementById('locInput').addEventListener('keydown', async (e) => {
+      if (e.key !== 'Enter') return;
+      const query = e.target.value.trim();
+      if (!query) return;
+      const dot = document.getElementById('locDot');
+      dot.style.background = '#666';
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`);
+        const data = await res.json();
+        if (data.length > 0) {
+          loc = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+          centerPin.setLatLng([loc.lat, loc.lng]);
+          map.setView([loc.lat, loc.lng], 14);
+          dot.style.background = 'var(--green)';
+          e.target.value = data[0].display_name.split(',').slice(0, 2).join(',');
+          generate();
+        } else {
+          dot.style.background = 'var(--red)';
+          e.target.value = 'Not found — try again';
+        }
+      } catch (err) {
+        dot.style.background = 'var(--red)';
+        e.target.value = 'Search failed';
+      }
+    });
 
-function clearPlayback() {
-  stopPlayback();
-  pbProgress = 0;
-  if (pbMarker) { map.removeLayer(pbMarker); pbMarker = null; }
-  if (pbTrail) { map.removeLayer(pbTrail); pbTrail = null; }
-  document.getElementById('pbScrub').value = 0;
-  document.getElementById('pbTime').textContent = '0:00';
-}
+    const sl = document.getElementById('distSlider');
+    const dv = document.getElementById('distVal');
+    sl.addEventListener('input', () => {
+      target = parseFloat(sl.value);
+      updateDistSliderDisplay();
+    });
+    sl.addEventListener('change', () => { target = parseFloat(sl.value); generate(); });
 
-// Scrub bar interaction
-const pbScrub = document.getElementById('pbScrub');
-pbScrub.addEventListener('input', () => {
-  pbProgress = parseInt(pbScrub.value) / 1000;
-  updatePlaybackPos(pbProgress);
-});
-pbScrub.addEventListener('mousedown', () => { if (pbPlaying) stopPlayback(); });
-pbScrub.addEventListener('touchstart', () => { if (pbPlaying) stopPlayback(); });
-</script>
+    function downloadGPX() {
+      if (!curGeo) return;
+      const text = document.getElementById('textInput').value.trim();
+      const gpx = mkGPX(curGeo, `STRIDE: ${text}`);
+      const blob = new Blob([gpx], { type: 'application/gpx+xml' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `stride-${text.toLowerCase().replace(/[^a-z0-9]/g, '-')}.gpx`;
+      a.click();
+    }
+
+    // ===== PLAYBACK =====
+    let pbAnim = null;
+    let pbPlaying = false;
+    let pbMarker = null;
+    let pbProgress = 0;
+    let pbTrail = null;
+
+    const pbRunnerIcon = L.divIcon({
+      html: '<div style="width:14px;height:14px;border-radius:50%;background:#fff;border:3px solid var(--accent);box-shadow:0 0 10px rgba(255,69,0,0.6)"></div>',
+      iconSize: [14, 14], iconAnchor: [7, 7], className: ''
+    });
+
+    function showPlayback() {
+      const pb = document.getElementById('playback');
+      pb.style.display = curGeo && curGeo.length > 1 ? 'flex' : 'none';
+    }
+
+    // Compute cumulative distances for even-speed interpolation
+    function getCumDist(geo) {
+      const d = [0];
+      for (let i = 1; i < geo.length; i++) {
+        const dlat = (geo[i].lat - geo[i - 1].lat) * 111000;
+        const dlng = (geo[i].lng - geo[i - 1].lng) * 111000 * Math.cos(geo[i].lat * Math.PI / 180);
+        d.push(d[i - 1] + Math.hypot(dlat, dlng));
+      }
+      return d;
+    }
+
+    function getPointAtFraction(geo, cumDist, frac) {
+      const totalD = cumDist[cumDist.length - 1];
+      const targetD = frac * totalD;
+      for (let i = 1; i < cumDist.length; i++) {
+        if (cumDist[i] >= targetD) {
+          const segLen = cumDist[i] - cumDist[i - 1];
+          const t = segLen > 0 ? (targetD - cumDist[i - 1]) / segLen : 0;
+          return {
+            lat: geo[i - 1].lat + (geo[i].lat - geo[i - 1].lat) * t,
+            lng: geo[i - 1].lng + (geo[i].lng - geo[i - 1].lng) * t,
+            idx: i
+          };
+        }
+      }
+      return { lat: geo[geo.length - 1].lat, lng: geo[geo.length - 1].lng, idx: geo.length - 1 };
+    }
+
+    function updatePlaybackPos(frac) {
+      if (!curGeo || curGeo.length < 2) return;
+      const cumDist = getCumDist(curGeo);
+      const pt = getPointAtFraction(curGeo, cumDist, frac);
+
+      if (!pbMarker) {
+        pbMarker = L.marker([pt.lat, pt.lng], { icon: pbRunnerIcon, zIndexOffset: 2000 }).addTo(map);
+      } else {
+        pbMarker.setLatLng([pt.lat, pt.lng]);
+      }
+
+      // Trail line up to current point
+      const trailPts = [];
+      for (let i = 0; i < pt.idx; i++) trailPts.push([curGeo[i].lat, curGeo[i].lng]);
+      trailPts.push([pt.lat, pt.lng]);
+      if (!pbTrail) {
+        pbTrail = L.polyline(trailPts, { color: '#fff', weight: 3, opacity: 0.5 }).addTo(map);
+      } else {
+        pbTrail.setLatLngs(trailPts);
+      }
+
+      // Update time display
+      const pace = getPaceMinPerKm();
+      const totalKm = cumDist[cumDist.length - 1] / 1000;
+      const elapsedMin = frac * totalKm * pace;
+      const mm = Math.floor(elapsedMin);
+      const ss = Math.floor((elapsedMin - mm) * 60);
+      document.getElementById('pbTime').textContent = `${mm}:${ss.toString().padStart(2, '0')}`;
+    }
+
+    function animatePlayback(timestamp) {
+      if (!pbPlaying) return;
+      pbProgress += 0.0015; // ~11 seconds for full route at 60fps
+      if (pbProgress >= 1) {
+        pbProgress = 1;
+        stopPlayback();
+      }
+      document.getElementById('pbScrub').value = Math.round(pbProgress * 1000);
+      updatePlaybackPos(pbProgress);
+      if (pbPlaying) pbAnim = requestAnimationFrame(animatePlayback);
+    }
+
+    function startPlayback() {
+      if (!curGeo || curGeo.length < 2) return;
+      if (pbProgress >= 1) pbProgress = 0;
+      pbPlaying = true;
+      document.getElementById('pbIconPlay').style.display = 'none';
+      document.getElementById('pbIconPause').style.display = 'block';
+      pbAnim = requestAnimationFrame(animatePlayback);
+    }
+
+    function stopPlayback() {
+      pbPlaying = false;
+      if (pbAnim) cancelAnimationFrame(pbAnim);
+      pbAnim = null;
+      document.getElementById('pbIconPlay').style.display = 'block';
+      document.getElementById('pbIconPause').style.display = 'none';
+    }
+
+    function togglePlayback() {
+      if (pbPlaying) stopPlayback(); else startPlayback();
+    }
+
+    function clearPlayback() {
+      stopPlayback();
+      pbProgress = 0;
+      if (pbMarker) { map.removeLayer(pbMarker); pbMarker = null; }
+      if (pbTrail) { map.removeLayer(pbTrail); pbTrail = null; }
+      document.getElementById('pbScrub').value = 0;
+      document.getElementById('pbTime').textContent = '0:00';
+    }
+
+    // Scrub bar interaction
+    const pbScrub = document.getElementById('pbScrub');
+    pbScrub.addEventListener('input', () => {
+      pbProgress = parseInt(pbScrub.value) / 1000;
+      updatePlaybackPos(pbProgress);
+    });
+    pbScrub.addEventListener('mousedown', () => { if (pbPlaying) stopPlayback(); });
+    pbScrub.addEventListener('touchstart', () => { if (pbPlaying) stopPlayback(); });
+  </script>
 </body>
+
 </html>
