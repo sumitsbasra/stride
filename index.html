@@ -521,6 +521,30 @@
       display: flex;
       justify-content: space-between;
     }
+
+    /* Mobile Responsive */
+    @media (max-width: 600px) {
+      .controls {
+        grid-template-columns: 1fr;
+      }
+
+      .stats-row {
+        gap: 6px;
+      }
+
+      .stat {
+        padding: 0 4px;
+      }
+
+      .stat-val {
+        font-size: 16px;
+      }
+
+      .stat-lbl {
+        font-size: 8px;
+        letter-spacing: 1px;
+      }
+    }
   </style>
 </head>
 
