@@ -14,7 +14,7 @@
 
 ## Tech Stack
 
-STRIDE is a zero-build, single-file web application (`stride.html`) ensuring maximum portability and performance.
+STRIDE is a zero-build, single-file web application (`index.html`) ensuring maximum portability and performance.
 
 - **Frontend**: Vanilla HTML, CSS, and JavaScript. Zero bundlers, zero dependencies (except Leaflet via CDN).
 - **Mapping**: [Leaflet.js](https://leafletjs.com/) with CARTO Dark Matter tiles.
@@ -23,7 +23,7 @@ STRIDE is a zero-build, single-file web application (`stride.html`) ensuring max
 
 ## How to Use
 
-1. Open `stride.html` in any modern web browser.
+1. Open `index.html` in any modern web browser.
 2. **Type your word**: Enter a word (e.g., "RUN").
 3. **Pick a location**: Search for a city, drag the green pin on the map, or use your device's current location.
 4. **Set a distance**: Use the slider to scale the total length of the run.
@@ -32,4 +32,4 @@ STRIDE is a zero-build, single-file web application (`stride.html`) ensuring max
 
 ## Development
 
-Everything is contained in a single `stride.html` file, no build steps are required.
+Everything is contained in a single `index.html` file, no build steps are required.
