@@ -160,6 +160,35 @@
       color: var(--text-dim);
     }
 
+    .rot-auto-btn {
+      -webkit-appearance: none;
+      appearance: none;
+      background: rgba(255, 69, 0, 0.15);
+      border: 1px solid rgba(255, 69, 0, 0.3);
+      border-radius: 4px;
+      color: var(--accent);
+      font-family: var(--sans);
+      font-size: 9px;
+      padding: 4px 0;
+      width: 44px;
+      text-align: center;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      transition: all 0.2s;
+      outline: none;
+    }
+
+    .rot-auto-btn:hover {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .rot-auto-btn.loading {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
     .leaflet-control-zoom a {
       background: var(--surface) !important;
       color: var(--text) !important;
@@ -955,7 +984,10 @@
               <div class="rot-dial-dot"></div>
             </div>
           </div>
-          <div class="rot-lbl" id="rotDisplay">0°</div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <div class="rot-lbl" id="rotDisplay">0°</div>
+          </div>
+          <button class="rot-auto-btn" id="rotAutoBtn" title="Auto-align to street grid">Auto</button>
         `;
         L.DomEvent.disableClickPropagation(div);
         return div;
@@ -994,6 +1026,115 @@
       rot = mathAngleDeg;
       rotDisplay.textContent = rot + '°';
     }
+
+    function setRotation(deg) {
+      rot = deg;
+      rotLine.style.transform = `translateY(-50%) rotate(${-deg}deg)`;
+      rotDisplay.textContent = rot + '°';
+    }
+
+    const rotAutoBtn = document.getElementById('rotAutoBtn');
+    rotAutoBtn.addEventListener('click', async () => {
+      rotAutoBtn.classList.add('loading');
+      rotAutoBtn.textContent = '...';
+      try {
+        const radius = 500;
+        const q = `[out:json];way(around:${radius},${loc.lat},${loc.lng})[highway][highway!~"footway|path|pedestrian|steps|cycleway|track"];(._;>;);out body;`;
+        const res = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(q)}`);
+        const data = await res.json();
+
+        // Build node map
+        const nodes = {};
+        data.elements.forEach(e => {
+          if (e.type === 'node') nodes[e.id] = { lat: e.lat, lng: e.lon };
+        });
+
+        // Collect all segment angles (weighted by length)
+        const angles = [];
+        data.elements.forEach(e => {
+          if (e.type === 'way' && e.nodes) {
+            for (let i = 1; i < e.nodes.length; i++) {
+              const n1 = nodes[e.nodes[i - 1]];
+              const n2 = nodes[e.nodes[i]];
+              if (!n1 || !n2) continue;
+
+              // Calculate segment vector
+              const dLat = (n2.lat - n1.lat) * 111000;
+              const dLng = (n2.lng - n1.lng) * 111000 * Math.cos(n1.lat * Math.PI / 180);
+              const dist = Math.hypot(dLat, dLng);
+              if (dist < 10) continue; // ignore tiny segments
+
+              const angleRad = Math.atan2(dLat, dLng);
+              let angleDeg = angleRad * 180 / Math.PI;
+              // Fold into 0-180 for histogram (grids are bidirectional)
+              if (angleDeg < 0) angleDeg += 180;
+              angles.push({ angle: angleDeg, weight: dist });
+            }
+          }
+        });
+
+        if (angles.length > 0) {
+          // Bin into buckets (e.g. every 2 degrees)
+          const bins = new Array(90).fill(0); // 0 to 180 in 2 deg bins
+          angles.forEach(a => {
+            const bucket = Math.floor(a.angle / 2) % 90;
+            bins[bucket] += a.weight;
+          });
+
+          // Find peak bin
+          let maxI = 0;
+          for (let i = 1; i < bins.length; i++) {
+            if (bins[i] > bins[maxI]) maxI = i;
+          }
+
+          // Weighted average around peak for sub-degree precision
+          let sumA = 0, sumW = 0;
+          angles.forEach(a => {
+            const bucket = Math.floor(a.angle / 2) % 90;
+            // Only include angles close to the peak (handling wrap around 0/180)
+            let diff = Math.abs(bucket - maxI);
+            if (diff > 45) diff = 90 - diff;
+            if (diff <= 2) {
+              sumA += a.angle * a.weight;
+              sumW += a.weight;
+            }
+          });
+
+          if (sumW > 0) {
+            let dominantAngle = Math.round(sumA / sumW);
+
+            // By default, text reads left to right (East). 
+            // If the dominant angle is e.g. 30 degrees (North-East), we want to read North-East.
+            // If the map has North-South and East-West streets, we typically want the reading direction
+            // to be along the horizontal-ish street.
+            // Let's choose the orientation closest to 0 (East) or 180 (West), prioritizing East.
+            let readingAngle = dominantAngle;
+            // OpenStreetMap angles from dy/dx: 0 is East, 90 is North.
+            // But we need to check both the primary and its orthogonal (streets run 2 ways, grids have 2 orthogonal axes)
+
+            // Potential reading directions on this grid: A, A+90, A+180, A+270
+            const c1 = dominantAngle;
+            const c2 = (dominantAngle + 90) % 360;
+            const c3 = (dominantAngle + 180) % 360;
+            const c4 = (dominantAngle + 270) % 360;
+
+            // Which one is closest to 0 (East reading)?
+            const dirs = [c1, c2, c3, c4].map(a => {
+              let aNormalized = a > 180 ? a - 360 : a;
+              return { a: aNormalized, dist: Math.abs(aNormalized) };
+            });
+            dirs.sort((a, b) => a.dist - b.dist);
+
+            setRotation(Math.round(dirs[0].a));
+            generate();
+          }
+        }
+      } catch (err) {
+        console.error("Auto rotate failed", err);
+      }
+      rotAutoBtn.classList.remove('loading');
+      rotAutoBtn.textContent = 'Auto';
+    });
 
     // Draggable start pin
     const pinIcon = L.divIcon({
