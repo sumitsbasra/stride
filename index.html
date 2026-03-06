@@ -107,6 +107,59 @@
       opacity: 0.6;
     }
 
+    /* Rotation Control on Map */
+    .rot-control {
+      background: rgba(20, 20, 20, 0.85);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      pointer-events: auto;
+    }
+
+    .rot-dial-wrap {
+      position: relative;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      cursor: crosshair;
+    }
+
+    .rot-dial-line {
+      position: absolute;
+      top: 50%;
+      left: 10%;
+      width: 80%;
+      height: 2px;
+      background: linear-gradient(to right, transparent, var(--accent));
+      transform-origin: center;
+      pointer-events: none;
+    }
+
+    .rot-dial-dot {
+      position: absolute;
+      right: -2px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 8px;
+      height: 8px;
+      background: var(--accent);
+      border-radius: 50%;
+      box-shadow: 0 0 6px rgba(255, 69, 0, 0.6);
+    }
+
+    .rot-lbl {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--text-dim);
+    }
+
     .leaflet-control-zoom a {
       background: var(--surface) !important;
       color: var(--text) !important;
@@ -637,7 +690,7 @@
             <span class="slider-val" id="distVal">5 km</span>
           </div>
         </div>
-        <div class="slider-hint">Letter size scales to hit your target run length</div>
+        <div class="slider-hint">Letter size scales to target length</div>
       </div>
 
       <!-- Pace -->
@@ -793,20 +846,36 @@
       } return r;
     }
 
-    function toGeo(path, ctr, sz) {
+    function toGeo(path, ctr, sz, angleDeg = 0) {
       if (!path.length) return []; const xs = path.map(p => p.x), ys = path.map(p => p.y);
       const mnX = Math.min(...xs), mxX = Math.max(...xs), mnY = Math.min(...ys), mxY = Math.max(...ys);
       const rX = mxX - mnX || 1, rY = mxY - mnY || 1, asp = rX / rY; let dLn, dLa;
       if (asp > 1) { dLn = sz; dLa = sz / asp } else { dLa = sz; dLn = sz * asp }
       const lc = Math.cos(ctr.lat * Math.PI / 180);
-      return path.map(p => ({ lat: ctr.lat + ((mxY - p.y) / rY - 0.5) * dLa, lng: ctr.lng + ((p.x - mnX) / rX - 0.5) * dLn / lc }));
+      const rad = angleDeg * Math.PI / 180;
+      const cosA = Math.cos(rad);
+      const sinA = Math.sin(rad);
+      return path.map(p => {
+        const nx = (p.x - mnX) / rX - 0.5;
+        const ny = (mxY - p.y) / rY - 0.5;
+
+        // Scale to physically isotropic space
+        const px = nx * dLn;
+        const py = ny * dLa;
+
+        // Rotate
+        const rx = px * cosA - py * sinA;
+        const ry = px * sinA + py * cosA;
+
+        return { lat: ctr.lat + ry, lng: ctr.lng + rx / lc };
+      });
     }
 
     // Like toGeo but anchors so the first point lands on startPt
-    function toGeoFromStart(path, startPt, sz) {
+    function toGeoFromStart(path, startPt, sz, angleDeg = 0) {
       if (!path.length) return [];
       // First compute centered on a dummy origin
-      const centered = toGeo(path, { lat: 0, lng: 0 }, sz);
+      const centered = toGeo(path, { lat: 0, lng: 0 }, sz, angleDeg);
       if (!centered.length) return [];
       // Offset so first point = startPt
       const dLat = startPt.lat - centered[0].lat;
@@ -866,6 +935,7 @@
     let busy = false;
     let target = 5; // always stored in km internally
     let useMetric = true;
+    let rot = 0; // rotation in degrees
 
     // ===== MAP =====
     map = L.map('map', { zoomControl: true }).setView([loc.lat, loc.lng], 14);
@@ -873,6 +943,57 @@
       attribution: '© <a href="https://www.openstreetmap.org/copyright">OSM</a> © <a href="https://carto.com/">CARTO</a>',
       subdomains: 'abcd', maxZoom: 19
     }).addTo(map);
+
+    // Custom Rotation Control
+    const RotationControl = L.Control.extend({
+      options: { position: 'topright' },
+      onAdd: function () {
+        const div = L.DomUtil.create('div', 'leaflet-bar leaflet-control rot-control');
+        div.innerHTML = `
+          <div class="rot-dial-wrap" id="rotDial" title="Drag to align text with streets">
+            <div class="rot-dial-line" id="rotLine">
+              <div class="rot-dial-dot"></div>
+            </div>
+          </div>
+          <div class="rot-lbl" id="rotDisplay">0°</div>
+        `;
+        L.DomEvent.disableClickPropagation(div);
+        return div;
+      }
+    });
+    map.addControl(new RotationControl());
+
+    const rotDial = document.getElementById('rotDial');
+    const rotLine = document.getElementById('rotLine');
+    const rotDisplay = document.getElementById('rotDisplay');
+
+    let isDraggingRot = false;
+    rotDial.addEventListener('mousedown', (e) => { isDraggingRot = true; updateRotFromEvent(e); });
+    document.addEventListener('mousemove', (e) => { if (isDraggingRot) updateRotFromEvent(e); });
+    document.addEventListener('mouseup', () => {
+      if (isDraggingRot) {
+        isDraggingRot = false;
+        generate();
+      }
+    });
+
+    function updateRotFromEvent(e) {
+      const rect = rotDial.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const angleRad = Math.atan2(e.clientY - cy, e.clientX - cx);
+
+      // Convert DOM angle to standard math angle (counter-clockwise is positive)
+      let mathAngleDeg = Math.round(-angleRad * 180 / Math.PI);
+      if (mathAngleDeg <= -180) mathAngleDeg += 360;
+
+      // visual dial: rotate in DOM (clockwise is positive)
+      rotLine.style.transform = `translateY(-50%) rotate(${-mathAngleDeg}deg)`;
+
+      // Update global rot variable
+      rot = mathAngleDeg;
+      rotDisplay.textContent = rot + '°';
+    }
 
     // Draggable start pin
     const pinIcon = L.divIcon({
@@ -968,8 +1089,8 @@
 
       const conn = connectViaBaseline(td);
       const fine = interp(conn, 1.5);
-      const geoC = toGeoFromStart(conn, loc, sz);
-      const geoF = toGeoFromStart(fine, loc, sz);
+      const geoC = toGeoFromStart(conn, loc, sz, rot);
+      const geoF = toGeoFromStart(fine, loc, sz, rot);
 
       // Clear
       [routeLine, ghostLine, endM].forEach(l => { if (l) map.removeLayer(l); });
